@@ -1,0 +1,13 @@
+$primaryColor: #db0322 !default;
+$primaryDarkColor: #e2354e !default;
+$primaryDarkerColor: #990218 !default;
+$primaryTextColor: #ffffff !default;
+
+$highlightBg: #EEF2FF !default;
+$highlightTextColor: $primaryDarkerColor !default;
+$highlightFocusBg: #E0E7FF !default;
+
+@import '../_variables';
+@import './_fonts';
+@import '../../../designer/components';
+@import '../extensions/_extensions';

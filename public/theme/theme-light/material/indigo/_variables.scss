@@ -1,0 +1,34 @@
+$primaryColor: #6366f1 !default;
+$primaryTextColor: #ffffff !default;
+$accentColor: #330c2f !default;
+$accentTextColor: #ffffff !default;
+
+//reused color variables
+$shade000: #ffffff !default; //surface
+$shade100: #f8fafc !default; //header background
+$shade200: #f1f5f9 !default; //hover background
+$shade300: #e2e8f0 !default; //border, divider
+$shade400: #cbd5e1 !default; //input border
+$shade500: #94a3b8 !default; //input icon
+$shade600: #64748b !default; //text secondary color
+$shade700: #475569 !default; //text color
+$shade800: #334155 !default; //unused
+$shade900: #1e293b !default; //unused
+
+// Custom Datatable
+$tableHeaderBg:$shade100!default;
+$tableHeaderCellBg:$shade100 !default;
+
+//dataview
+$dataViewContentPadding: 0 !default;
+$dataViewContentBorder: 0 none !default;
+$dataViewListItemBorder: solid $shade300 !default;
+$dataViewListItemBorderWidth: 0 0 1px 0 !default;
+
+//schedule
+$fullCalendarEventBg: $primaryColor !default;
+$fullCalendarEventBorderColor: $primaryColor !default;
+$fullCalendarEventBorder: 1px solid $primaryColor !default;
+$fullCalendarEventTextColor: $primaryTextColor !default;
+
+@import '../variables';

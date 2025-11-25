@@ -1,0 +1,33 @@
+{
+  "name": "retts-webapp-nuxt-4",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@nuxt/eslint": "^1.10.0",
+    "@nuxt/fonts": "^0.12.1",
+    "@nuxt/hints": "^1.0.0-alpha.2",
+    "@nuxt/icon": "^2.1.0",
+    "@nuxt/image": "^2.0.0",
+    "@nuxt/scripts": "^0.13.0",
+    "@primeuix/themes": "^1.2.5",
+    "@primevue/nuxt-module": "^4.4.1",
+    "@tailwindcss/vite": "^4.1.17",
+    "@unhead/vue": "^2.0.19",
+    "eslint": "^9.39.1",
+    "nuxt": "^4.2.1",
+    "primeflex": "^3.3.1",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.4.1",
+    "tailwindcss": "^4.1.17",
+    "tailwindcss-primeui": "^0.6.1",
+    "vue": "^3.5.24",
+    "vue-router": "^4.6.3"
+  }
+}

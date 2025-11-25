@@ -1,0 +1,13 @@
+$primaryColor: #af021b !default;
+$primaryLightColor: #c5031f !default;
+$primaryLighterColor: #db0322 !default;
+$primaryTextColor: #ededef !default;
+
+$highlightBg: rgba(129, 140, 248, 0.16) !default;
+$highlightTextColor: rgba(255, 255, 255, 0.87) !default;
+$highlightFocusBg: rgba($primaryColor, 0.24) !default;
+
+@import '../_variables';
+@import './_fonts';
+@import '../../../designer/components';
+@import '../extensions/_extensions';

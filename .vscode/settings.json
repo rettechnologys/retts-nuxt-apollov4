@@ -1,0 +1,27 @@
+{
+  "editor.tabSize": 2,
+  "editor.formatOnSave": true,
+  "html.format.endWithNewline": false,
+  "html.format.preserveNewLines": true,
+  "html.format.wrapAttributes": "force-aligned", // Change from "auto" to "force-aligned"
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSaveMode": "file",
+  "[vue]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode" // Explicitly set formatter for Vue files
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "never"
+  },
+  "prettier.singleAttributePerLine": true, // Add this to force consistent attribute formatting
+  "prettier.vueIndentScriptAndStyle": true, // Better Vue formatting
+  "scss.lint.unknownAtRules": "ignore",
+  "css.lint.unknownAtRules": "ignore",
+  "typescriptHero.imports.organizeOnSave": false,
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "todo-tree.tree.showBadges": false,
+  "eslint.useFlatConfig": true,
+}
