@@ -1,427 +1,432 @@
 <!-- Page Create/Edit View -->
 <template>
-  <Tabs :value="0">
-    <TabList>
-      <Tab :value="0">Basic Information</Tab>
-      <Tab :value="1">Page Design</Tab>
-    </TabList>
-    <TabPanels>
-      <TabPanel :value="0">
-        <!-- Basic Information Form -->
-        <div
-          class="flex justify-between items-start px-8 py-6 bg-white border-b border-gray-200 sticky top-0 z-10"
-        >
-          <div class="flex items-start gap-4">
-            <Button icon="pi pi-arrow-left" text @click="handleBack" />
-            <div>
-              <h1 class="text-2xl font-bold m-0">
-                {{ isEdit ? 'Edit Page' : 'Create New Page' }}
-              </h1>
-              <div
-                v-if="formData.slug"
-                class="flex items-center gap-2 text-gray-500 text-sm mt-1"
-              >
-                <i class="pi pi-link text-xs"></i>
-                <span>{{ pageUrlPreview }}</span>
+  <div>
+    <!-- <div
+      class="flex justify-end items-start px-8 py-6 bg-white border-b border-gray-200 sticky top-0 z-10"
+    >
+      <div class="flex items-start gap-4">
+              <Button icon="pi pi-arrow-left" text @click="handleBack" />
+              <div>
+                <h1 class="text-2xl font-bold m-0">
+                  {{ isEdit ? 'Edit Page' : 'Create New Page' }}
+                </h1>
+                <div
+                  v-if="formData.slug"
+                  class="flex items-center gap-2 text-gray-500 text-sm mt-1"
+                >
+                  <i class="pi pi-link text-xs"></i>
+                  <span>{{ pageUrlPreview }}</span>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="flex gap-3">
-            <Button
-              label="Preview"
-              icon="pi pi-eye"
-              severity="secondary"
-              outlined
-              :disabled="!formData.title"
-              @click="previewPage"
-            />
-            <Button
-              label="Save Draft"
-              icon="pi pi-save"
-              severity="secondary"
-              outlined
-              :loading="isSaving"
-              @click="saveDraft"
-            />
-            <Button
-              v-if="formData.status === 'published'"
-              label="Update"
-              icon="pi pi-check"
-              :loading="isSaving"
-              @click="publishPage"
-            />
-            <Button
-              v-else
-              label="Publish"
-              icon="pi pi-check"
-              :loading="isSaving"
-              @click="publishPage"
-            />
-          </div>
-        </div>
+      <div class="flex gap-3">
+        <Button
+          label="Preview"
+          icon="pi pi-eye"
+          severity="secondary"
+          outlined
+          :disabled="!formData.title"
+          @click="previewPage"
+        />
+        <Button
+          label="Save Draft"
+          icon="pi pi-save"
+          severity="secondary"
+          outlined
+          :loading="isSaving"
+          @click="saveDraft"
+        />
+        <Button
+          v-if="formData.status === 'published'"
+          label="Update"
+          icon="pi pi-check"
+          :loading="isSaving"
+          @click="publishPage"
+        />
+        <Button
+          v-else
+          label="Publish"
+          icon="pi pi-check"
+          :loading="isSaving"
+          @click="publishPage"
+        />
+      </div>
+    </div> -->
+    <Tabs :value="0">
+      <TabList>
+        <Tab :value="0">Basic Information</Tab>
+        <Tab :value="1">Page Design</Tab>
+      </TabList>
+      <TabPanels>
+        <TabPanel :value="0">
+          <!-- Basic Information Form -->
 
-        <!-- Main Content -->
-        <div
-          class="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-6 p-8 max-w-[1600px] mx-auto"
-        >
-          <!-- Left Column - Main Form -->
-          <div class="min-w-0">
-            <!-- Basic Info Card -->
-            <Card>
-              <template #title>Basic Information</template>
-              <template #content>
-                <div class="space-y-4">
-                  <!-- Title -->
-                  <div class="field">
-                    <label for="title" class="block font-medium mb-2">
-                      Page Title <span class="text-red-500">*</span>
-                    </label>
-                    <InputText
-                      id="title"
-                      v-model="formData.title"
-                      placeholder="Enter page title"
-                      class="w-full"
-                      :class="{ 'p-invalid': errors.title }"
-                      @input="handleTitleChange"
-                    />
-                    <small v-if="errors.title" class="text-red-500">
-                      {{ errors.title }}
-                    </small>
-                  </div>
-
-                  <!-- Slug -->
-                  <div class="field">
-                    <label for="slug" class="block font-medium mb-2">
-                      URL Slug <span class="text-red-500">*</span>
-                    </label>
-                    <div class="flex gap-2 items-center">
-                      <span
-                        class="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md font-medium"
-                        >/</span
-                      >
+          <!-- Main Content -->
+          <div
+            class="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-6 p-8 max-w-[1600px] mx-auto"
+          >
+            <!-- Left Column - Main Form -->
+            <div class="min-w-0">
+              <!-- Basic Info Card -->
+              <Card>
+                <template #title>Basic Information</template>
+                <template #content>
+                  <div class="space-y-4">
+                    <!-- Title -->
+                    <div class="field">
+                      <label for="title" class="block font-medium mb-2">
+                        Page Title <span class="text-red-500">*</span>
+                      </label>
                       <InputText
-                        id="slug"
-                        v-model="formData.slug"
-                        placeholder="page-url-slug"
-                        class="flex-1"
-                        :class="{ 'p-invalid': errors.slug }"
-                        @input="handleSlugChange"
+                        id="title"
+                        v-model="formData.title"
+                        placeholder="Enter page title"
+                        class="w-full"
+                        :class="{ 'p-invalid': errors.title }"
+                        @input="handleTitleChange"
                       />
-                      <Button
-                        icon="pi pi-refresh"
-                        outlined
-                        size="small"
-                        v-tooltip.top="'Generate from title'"
-                        @click="regenerateSlug"
-                      />
+                      <small v-if="errors.title" class="text-red-500">
+                        {{ errors.title }}
+                      </small>
                     </div>
-                    <small v-if="errors.slug" class="text-red-500">
-                      {{ errors.slug }}
-                    </small>
-                    <small
-                      v-else-if="slugStatus === 'checking'"
-                      class="text-blue-500"
-                    >
-                      <i class="pi pi-spin pi-spinner"></i> Checking
-                      availability...
-                    </small>
-                    <small
-                      v-else-if="slugStatus === 'available'"
-                      class="text-green-500"
-                    >
-                      <i class="pi pi-check"></i> URL is available
-                    </small>
-                    <small
-                      v-else-if="slugStatus === 'taken'"
-                      class="text-red-500"
-                    >
-                      <i class="pi pi-times"></i> This URL is already in use
-                    </small>
-                  </div>
 
-                  <!-- Page Type -->
-                  <div class="field">
-                    <label for="pageType" class="block font-medium mb-2">
-                      Page Type <span class="text-red-500">*</span>
-                    </label>
-                    <Select
-                      inputId="pageType"
-                      v-model="formData.type"
-                      :options="pageTypes"
-                      optionLabel="label"
-                      optionValue="value"
-                      placeholder="Select page type"
-                      class="w-full"
-                      :class="{ 'p-invalid': errors.type }"
-                      @change="hasChanges = true"
-                    >
-                      <template #option="{ option }">
-                        <div class="flex items-center gap-2">
-                          <i :class="option.icon"></i>
+                    <!-- Slug -->
+                    <div class="field">
+                      <label for="slug" class="block font-medium mb-2">
+                        URL Slug <span class="text-red-500">*</span>
+                      </label>
+                      <div class="flex gap-2 items-center">
+                        <span
+                          class="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md font-medium"
+                          >/</span
+                        >
+                        <InputText
+                          id="slug"
+                          v-model="formData.slug"
+                          placeholder="page-url-slug"
+                          class="flex-1"
+                          :class="{ 'p-invalid': errors.slug }"
+                          @input="handleSlugChange"
+                        />
+                        <Button
+                          icon="pi pi-refresh"
+                          outlined
+                          size="small"
+                          v-tooltip.top="'Generate from title'"
+                          @click="regenerateSlug"
+                        />
+                      </div>
+                      <small v-if="errors.slug" class="text-red-500">
+                        {{ errors.slug }}
+                      </small>
+                      <small
+                        v-else-if="slugStatus === 'checking'"
+                        class="text-blue-500"
+                      >
+                        <i class="pi pi-spin pi-spinner"></i> Checking
+                        availability...
+                      </small>
+                      <small
+                        v-else-if="slugStatus === 'available'"
+                        class="text-green-500"
+                      >
+                        <i class="pi pi-check"></i> URL is available
+                      </small>
+                      <small
+                        v-else-if="slugStatus === 'taken'"
+                        class="text-red-500"
+                      >
+                        <i class="pi pi-times"></i> This URL is already in use
+                      </small>
+                    </div>
+
+                    <!-- Page Type -->
+                    <div class="field">
+                      <label for="pageType" class="block font-medium mb-2">
+                        Page Type <span class="text-red-500">*</span>
+                      </label>
+                      <Select
+                        inputId="pageType"
+                        v-model="formData.type"
+                        :options="pageTypes"
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Select page type"
+                        class="w-full"
+                        :class="{ 'p-invalid': errors.type }"
+                        @change="hasChanges = true"
+                      >
+                        <template #option="{ option }">
+                          <div class="flex items-center gap-2">
+                            <i :class="option.icon"></i>
+                            <div>
+                              <div class="font-medium">{{ option.label }}</div>
+                              <small class="text-surface-500">{{
+                                option.description
+                              }}</small>
+                            </div>
+                          </div>
+                        </template>
+                      </Select>
+                      <small v-if="errors.type" class="text-red-500">
+                        {{ errors.type }}
+                      </small>
+                    </div>
+
+                    <!-- Template Selection -->
+                    <!-- <div class="field">
+                      <label for="template" class="block font-medium mb-2">
+                        Template
+                      </label>
+                      <Select
+                        inputId="template"
+                        v-model="formData.templateId"
+                        :options="availableTemplates"
+                        optionLabel="name"
+                        optionValue="id"
+                        placeholder="Select a template (optional)"
+                        class="w-full"
+                        :showClear="true"
+                        @change="hasChanges = true"
+                      >
+                        <template #option="{ option }">
                           <div>
-                            <div class="font-medium">{{ option.label }}</div>
+                            <div class="font-medium">{{ option.name }}</div>
                             <small class="text-surface-500">{{
                               option.description
                             }}</small>
                           </div>
-                        </div>
-                      </template>
-                    </Select>
-                    <small v-if="errors.type" class="text-red-500">
-                      {{ errors.type }}
-                    </small>
+                        </template>
+                      </Select>
+                      <small class="text-surface-500">
+                        Choose a pre-built template or build from scratch
+                      </small>
+                    </div> -->
                   </div>
+                </template>
+              </Card>
 
-                  <!-- Template Selection -->
-                  <div class="field">
-                    <label for="template" class="block font-medium mb-2">
-                      Template
-                    </label>
-                    <Select
-                      inputId="template"
-                      v-model="formData.templateId"
-                      :options="availableTemplates"
-                      optionLabel="name"
-                      optionValue="id"
-                      placeholder="Select a template (optional)"
-                      class="w-full"
-                      :showClear="true"
-                      @change="hasChanges = true"
-                    >
-                      <template #option="{ option }">
-                        <div>
-                          <div class="font-medium">{{ option.name }}</div>
-                          <small class="text-surface-500">{{
-                            option.description
-                          }}</small>
-                        </div>
-                      </template>
-                    </Select>
-                    <small class="text-surface-500">
-                      Choose a pre-built template or build from scratch
-                    </small>
-                  </div>
-                </div>
-              </template>
-            </Card>
-
-            <!-- Content Editor Card -->
-            <Card class="mt-4">
-              <template #title>Page Content</template>
-              <template #content>
-                <Tabs value="0">
-                  <TabList>
-                    <Tab value="0">Visual Editor</Tab>
-                    <Tab value="1">HTML</Tab>
-                    <Tab value="2">JSON</Tab>
-                  </TabList>
-                  <TabPanels>
-                    <!-- Visual Editor Panel -->
-                    <TabPanel value="0">
-                      <div class="min-h-[300px]">
-                        <Message severity="info" :closable="false" class="mb-4">
-                          <div class="flex items-center gap-2">
-                            <i class="pi pi-info-circle"></i>
-                            <span
-                              >Drag and drop blocks to build your page. Click
-                              "Add Block" to get started.</span
-                            >
-                          </div>
-                        </Message>
-                        <Button
-                          label="Add Block"
-                          icon="pi pi-plus"
-                          outlined
-                          @click="showBlockSelector = true"
-                        />
-                        <!-- Placeholder for block editor integration -->
-                        <div
-                          v-if="
-                            formData.content.blocks &&
-                            formData.content.blocks.length > 0
-                          "
-                          class="flex flex-col gap-4 mt-4"
-                        >
-                          <div
-                            v-for="(block, index) in formData.content.blocks"
-                            :key="index"
-                            class="p-4 border border-gray-200 rounded-md bg-gray-50"
+              <!-- Content Editor Card -->
+              <!-- <Card class="mt-4">
+                <template #title>Page Content</template>
+                <template #content>
+                  <Tabs value="0">
+                    <TabList>
+                      <Tab value="0">Visual Editor</Tab>
+                      <Tab value="1">HTML</Tab>
+                      <Tab value="2">JSON</Tab>
+                    </TabList>
+                    <TabPanels>
+                      <TabPanel value="0">
+                        <div class="min-h-[300px]">
+                          <Message
+                            severity="info"
+                            :closable="false"
+                            class="mb-4"
                           >
-                            <div class="flex justify-between items-center">
-                              <span class="font-medium"
-                                >{{ block.name || block.type }} Block</span
+                            <div class="flex items-center gap-2">
+                              <i class="pi pi-info-circle"></i>
+                              <span
+                                >Drag and drop blocks to build your page. Click
+                                "Add Block" to get started.</span
                               >
-                              <div class="flex gap-1">
-                                <Button
-                                  icon="pi pi-pencil"
-                                  text
-                                  size="small"
-                                  @click="editBlock(index)"
-                                />
-                                <Button
-                                  icon="pi pi-trash"
-                                  text
-                                  size="small"
-                                  severity="danger"
-                                  @click="removeBlock(index)"
-                                />
+                            </div>
+                          </Message>
+                          <Button
+                            label="Add Block"
+                            icon="pi pi-plus"
+                            outlined
+                            @click="showBlockSelector = true"
+                          />
+                          <div
+                            v-if="
+                              formData.content.blocks &&
+                              formData.content.blocks.length > 0
+                            "
+                            class="flex flex-col gap-4 mt-4"
+                          >
+                            <div
+                              v-for="(block, index) in formData.content.blocks"
+                              :key="index"
+                              class="p-4 border border-gray-200 rounded-md bg-gray-50"
+                            >
+                              <div class="flex justify-between items-center">
+                                <span class="font-medium"
+                                  >{{ block.name || block.type }} Block</span
+                                >
+                                <div class="flex gap-1">
+                                  <Button
+                                    icon="pi pi-pencil"
+                                    text
+                                    size="small"
+                                    @click="editBlock(index)"
+                                  />
+                                  <Button
+                                    icon="pi pi-trash"
+                                    text
+                                    size="small"
+                                    severity="danger"
+                                    @click="removeBlock(index)"
+                                  />
+                                </div>
                               </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </TabPanel>
+                      </TabPanel>
 
-                    <!-- HTML Editor Panel -->
-                    <TabPanel value="1">
-                      <Textarea
-                        v-model="formData.content.html"
-                        rows="15"
-                        class="w-full font-mono text-sm"
-                        placeholder="<div>Your HTML content here...</div>"
-                        @input="hasChanges = true"
-                      />
-                    </TabPanel>
-
-                    <!-- JSON Editor Panel -->
-                    <TabPanel value="2">
-                      <Textarea
-                        :modelValue="jsonContent"
-                        rows="15"
-                        class="w-full font-mono text-sm"
-                        placeholder="{}"
-                        @update:modelValue="updateJsonContent"
-                      />
-                    </TabPanel>
-                  </TabPanels>
-                </Tabs>
-              </template>
-            </Card>
-          </div>
-
-          <!-- Right Column - Settings -->
-          <div class="xl:sticky xl:top-[100px] h-fit">
-            <!-- Status Card -->
-            <Card>
-              <template #title>Publish</template>
-              <template #content>
-                <div class="space-y-4">
-                  <!-- Status -->
-                  <div class="field">
-                    <label for="status" class="block font-medium mb-2"
-                      >Status</label
-                    >
-                    <Select
-                      inputId="status"
-                      v-model="formData.status"
-                      :options="statusOptions"
-                      optionLabel="label"
-                      optionValue="value"
-                      class="w-full"
-                      @change="hasChanges = true"
-                    >
-                      <template #option="{ option }">
-                        <div class="flex items-center gap-2">
-                          <Badge
-                            :value="option.label"
-                            :severity="option.severity"
-                          />
-                        </div>
-                      </template>
-                      <template #value="{ value }">
-                        <Badge
-                          :value="
-                            statusOptions.find((s) => s.value === value)?.label
-                          "
-                          :severity="
-                            statusOptions.find((s) => s.value === value)
-                              ?.severity
-                          "
+                      <TabPanel value="1">
+                        <Textarea
+                          v-model="formData.content.html"
+                          rows="15"
+                          class="w-full font-mono text-sm"
+                          placeholder="<div>Your HTML content here...</div>"
+                          @input="hasChanges = true"
                         />
-                      </template>
-                    </Select>
-                  </div>
+                      </TabPanel>
 
-                  <!-- Schedule Publishing -->
-                  <div v-if="formData.status === 'scheduled'" class="field">
-                    <label for="scheduledAt" class="block font-medium mb-2">
-                      Publish Date & Time
-                    </label>
-                    <DatePicker
-                      inputId="scheduledAt"
-                      v-model="formData.scheduledAt"
-                      showTime
-                      hourFormat="12"
-                      class="w-full"
-                      @update:modelValue="hasChanges = true"
-                    />
-                  </div>
+                      <TabPanel value="2">
+                        <Textarea
+                          :modelValue="jsonContent"
+                          rows="15"
+                          class="w-full font-mono text-sm"
+                          placeholder="{}"
+                          @update:modelValue="updateJsonContent"
+                        />
+                      </TabPanel>
+                    </TabPanels>
+                  </Tabs>
+                </template>
+              </Card> -->
+              <!-- SEO Settings -->
+              <PageSEOFields
+                v-model="formData.seo"
+                :pageTitle="formData.title"
+                :pageUrl="pageUrlPreview"
+                class="mt-4"
+              />
 
-                  <!-- Visibility Info -->
-                  <div class="p-4 bg-gray-50 rounded-md">
-                    <div class="flex items-center gap-2">
-                      <i class="pi pi-eye text-surface-500"></i>
-                      <span class="text-sm">
-                        {{
-                          formData.status === 'published'
-                            ? 'Visible to public'
-                            : 'Not visible to public'
-                        }}
-                      </span>
+              <!-- Page Settings -->
+              <PageSettingsPanel v-model="formData.settings" class="mt-4" />
+            </div>
+
+            <!-- Right Column - Settings -->
+            <div class="xl:sticky xl:top-[100px] h-fit">
+              <!-- Status Card -->
+              <Card>
+                <template #title>Publish</template>
+                <template #content>
+                  <div class="space-y-4">
+                    <!-- Status -->
+                    <div class="field">
+                      <label for="status" class="block font-medium mb-2"
+                        >Status</label
+                      >
+                      <Select
+                        inputId="status"
+                        v-model="formData.status"
+                        :options="statusOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        class="w-full"
+                        @change="hasChanges = true"
+                      >
+                        <template #option="{ option }">
+                          <div class="flex items-center gap-2">
+                            <Badge
+                              :value="option.label"
+                              :severity="option.severity"
+                            />
+                          </div>
+                        </template>
+                        <template #value="{ value }">
+                          <Badge
+                            :value="
+                              statusOptions.find((s) => s.value === value)
+                                ?.label
+                            "
+                            :severity="
+                              statusOptions.find((s) => s.value === value)
+                                ?.severity
+                            "
+                          />
+                        </template>
+                      </Select>
+                    </div>
+
+                    <!-- Schedule Publishing -->
+                    <div v-if="formData.status === 'scheduled'" class="field">
+                      <label for="scheduledAt" class="block font-medium mb-2">
+                        Publish Date & Time
+                      </label>
+                      <DatePicker
+                        inputId="scheduledAt"
+                        v-model="formData.scheduledAt"
+                        showTime
+                        hourFormat="12"
+                        class="w-full"
+                        @update:modelValue="hasChanges = true"
+                      />
+                    </div>
+
+                    <!-- Visibility Info -->
+                    <div class="p-4 bg-gray-50 rounded-md">
+                      <div class="flex items-center gap-2">
+                        <i class="pi pi-eye text-surface-500"></i>
+                        <span class="text-sm">
+                          {{
+                            formData.status === 'published'
+                              ? 'Visible to public'
+                              : 'Not visible to public'
+                          }}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </template>
-            </Card>
-
-            <!-- SEO Settings -->
-            <PageSEOFields
-              v-model="formData.seo"
-              :pageTitle="formData.title"
-              :pageUrl="pageUrlPreview"
-              class="mt-4"
-            />
-
-            <!-- Page Settings -->
-            <PageSettingsPanel v-model="formData.settings" class="mt-4" />
+                </template>
+              </Card>
+            </div>
           </div>
-        </div>
 
-        <!-- Unsaved Changes Dialog -->
-        <Dialog
-          v-model:visible="showUnsavedDialog"
-          header="Unsaved Changes"
-          :modal="true"
-          :closable="false"
-        >
-          <p>
-            You have unsaved changes. Do you want to save them before leaving?
-          </p>
-          <template #footer>
-            <Button label="Discard" severity="secondary" outlined />
-            <Button label="Save Draft" @click="saveAndLeave" />
-          </template>
-        </Dialog>
+          <!-- Unsaved Changes Dialog -->
+          <Dialog
+            v-model:visible="showUnsavedDialog"
+            header="Unsaved Changes"
+            :modal="true"
+            :closable="false"
+          >
+            <p>
+              You have unsaved changes. Do you want to save them before leaving?
+            </p>
+            <template #footer>
+              <Button label="Discard" severity="secondary" outlined />
+              <Button label="Save Draft" @click="saveAndLeave" />
+            </template>
+          </Dialog>
 
-        <!-- Block Selector Dialog -->
-        <BlockSelector v-model:visible="showBlockSelector" @select="addBlock" />
+          <!-- Block Selector Dialog -->
+          <BlockSelector
+            v-model:visible="showBlockSelector"
+            @select="addBlock"
+          />
 
-        <!-- Block Editor Dialog -->
-        <BlockEditor
-          v-model:visible="showBlockEditor"
-          :blockData="editingBlock"
-          @save="saveBlockConfig"
-        />
-      </TabPanel>
-      <TabPanel :value="1">
-        <!-- Page Design Editor -->
-        <div class="p-4">
-          <h2 class="text-xl font-semibold mb-4">Page Design</h2>
-          <!-- Content editor, block editor, etc. -->
-        </div>
-      </TabPanel>
-    </TabPanels>
-  </Tabs>
+          <!-- Block Editor Dialog -->
+          <BlockEditor
+            v-model:visible="showBlockEditor"
+            :blockData="editingBlock"
+            @save="saveBlockConfig"
+          />
+        </TabPanel>
+        <TabPanel :value="1">
+          <!-- Page Design Editor -->
+          <div class="p-4">
+            <h2 class="text-xl font-semibold mb-4">Page Design</h2>
+            <!-- Content editor, block editor, etc. -->
+          </div>
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
+  </div>
 </template>
 
 <script setup lang="ts">
