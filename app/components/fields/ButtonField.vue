@@ -21,16 +21,16 @@
   </Button>
   <Button
     v-else
-    :label="props.pv.label"
-    :icon="props.pv.icon"
-    :rounded="props.pv.rounded"
-    :text="props.pv.text"
-    :outlined="props.pv.outlined"
-    :severity="props.pv.severity"
-    :size="props.pv.size"
-    :disabled="props.pv.disabled"
-    :loading="props.pv.loading"
-    :as="props.pv.as"
+    :label="props.label"
+    :icon="props.icon"
+    :rounded="props.rounded"
+    :text="props.text"
+    :outlined="props.outlined"
+    :severity="props.severity"
+    :size="props.size"
+    :disabled="props.disabled"
+    :loading="props.loading"
+    :as="props.as"
     @click="handleClick"
     v-bind="{
       ...props.class,
@@ -79,7 +79,6 @@ type Props = {
 // }
 
 const props = defineProps<Props>();
-console.log('ButtonField received props:', { ...props });
 
 const emit = defineEmits<{
   click: [event: MouseEvent];

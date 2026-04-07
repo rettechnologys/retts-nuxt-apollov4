@@ -1,18 +1,18 @@
 <template>
-  <!-- <component
-    :is="resolvedComponent"
-    v-bind="{ ...componentConfig.props, ...componentConfig.content }"
-  > -->
   <component
     :is="resolvedComponent"
-    v-bind="{ ...componentConfig, ...componentConfig?.props }"
+    v-bind="{ ...componentConfig.props, ...componentConfig.content }"
   >
+    <!-- <component
+    :is="resolvedComponent"
+    v-bind="{ ...componentConfig, ...componentConfig?.props }"
+  > -->
     <!-- Render nested components if they exist -->
     <template
-      v-if="componentConfig.children && componentConfig.children.length > 0"
+      v-if="componentConfig.components && componentConfig.components.length > 0"
     >
       <DynamicComponentRenderer
-        v-for="(childComponent, index) in componentConfig.children"
+        v-for="(childComponent, index) in componentConfig.components"
         :key="`${childComponent.name}-${index}`"
         :component-config="{ ...childComponent }"
         v-bind="{ ...childComponent?.props }"
@@ -34,8 +34,8 @@ console.log('Rendering component with config:', props.componentConfig);
 
 // Resolve the component from registry
 const resolvedComponent = computed(() => {
-  // const componentName = props.componentConfig.component;
-  const componentName = props.componentConfig.name;
+  const componentName = props.componentConfig.component;
+  // const componentName = props.componentConfig.name;
   console.log(
     `Resolving component "${componentName}" for config:`,
     props.componentConfig,

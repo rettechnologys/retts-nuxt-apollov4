@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
     // }
 
     // 4. Fallback to mock data for development
-    const mockPage = getMockPage2(slugPath);
+    const mockPage = getMockPage(slugPath);
     if (mockPage) {
       console.log('[API Pages] Mock page found');
       return mockPage;
@@ -46,9 +46,8 @@ export default defineEventHandler(async (event) => {
     // Not found
     throw createError({
       statusCode: 404,
-      message: `Page not found: ${slugPath}`
+      message: `Page not found: ${slugPath}`,
     });
-
   } catch (error: any) {
     console.error('[API Pages] Error:', error);
 
@@ -58,7 +57,7 @@ export default defineEventHandler(async (event) => {
 
     throw createError({
       statusCode: 500,
-      message: 'Internal server error'
+      message: 'Internal server error',
     });
   }
 });
@@ -94,7 +93,9 @@ async function fetchPageFromCMS(_slugPath: string): Promise<PageConfig | null> {
 /**
  * Try to fetch collection listing page
  */
-async function tryFetchCollectionList(_slugPath: string): Promise<PageConfig | null> {
+async function tryFetchCollectionList(
+  _slugPath: string,
+): Promise<PageConfig | null> {
   // TODO: Implement when backend is ready
   // For now, handled by getMockPage
   return null;
@@ -104,7 +105,9 @@ async function tryFetchCollectionList(_slugPath: string): Promise<PageConfig | n
  * Try to fetch collection detail page
  * Pattern: collection-slug/item-slug (e.g., articles/my-post)
  */
-async function tryFetchCollectionDetail(slugPath: string): Promise<PageConfig | null> {
+async function tryFetchCollectionDetail(
+  slugPath: string,
+): Promise<PageConfig | null> {
   // Pattern: collection/item-slug
   const match = slugPath.match(/^([^/]+)\/([^/]+)$/);
   if (!match) return null;
@@ -153,7 +156,7 @@ async function tryFetchCollectionDetail(slugPath: string): Promise<PageConfig | 
 function buildPageFromTemplate(
   template: any,
   item: any,
-  collectionSlug: string
+  collectionSlug: string,
 ): PageConfig {
   // Process template blocks and replace dynamic variables with actual data
   const blocks = template.blocks.map((block: any) => {
@@ -162,11 +165,13 @@ function buildPageFromTemplate(
       type: block.type,
       component: block.component,
       props: processTemplateProps(block.props, item),
-      components: block.components ? block.components.map((comp: any) => ({
-        name: comp.name,
-        component: comp.component,
-        props: processTemplateProps(comp.props, item)
-      })) : undefined
+      components: block.components
+        ? block.components.map((comp: any) => ({
+            name: comp.name,
+            component: comp.component,
+            props: processTemplateProps(comp.props, item),
+          }))
+        : undefined,
     };
   });
 
@@ -176,8 +181,12 @@ function buildPageFromTemplate(
     blocks,
     seoMeta: {
       title: processTemplateValue(template.seoMeta?.title, item) || item.title,
-      description: processTemplateValue(template.seoMeta?.description, item) || item.excerpt,
-      ogImage: processTemplateValue(template.seoMeta?.ogImage, item) || item.coverImage
+      description:
+        processTemplateValue(template.seoMeta?.description, item) ||
+        item.excerpt,
+      ogImage:
+        processTemplateValue(template.seoMeta?.ogImage, item) ||
+        item.coverImage,
     },
     meta: {
       type: 'collection-detail',
@@ -185,9 +194,9 @@ function buildPageFromTemplate(
       collection: {
         type: collectionSlug,
         isDetail: true,
-        itemSlug: item.slug
-      }
-    }
+        itemSlug: item.slug,
+      },
+    },
   };
 }
 
@@ -199,7 +208,7 @@ function processTemplateProps(props: any, item: any): any {
   if (!props) return {};
 
   if (Array.isArray(props)) {
-    return props.map(prop => processTemplateProps(prop, item));
+    return props.map((prop) => processTemplateProps(prop, item));
   }
 
   if (typeof props === 'object') {
@@ -273,7 +282,8 @@ function getMockArticleDetailPage(slug: string): PageConfig | null {
     'getting-started': {
       slug: 'getting-started',
       title: 'Getting Started with Our Platform',
-      excerpt: 'A comprehensive guide to help you get up and running quickly with all the essential features.',
+      excerpt:
+        'A comprehensive guide to help you get up and running quickly with all the essential features.',
       content: `
         <h2>Welcome to Our Platform</h2>
         <p>This comprehensive guide will help you get started with all the essential features of our platform. Whether you're a beginner or an experienced user, you'll find valuable insights here.</p>
@@ -305,12 +315,13 @@ function getMockArticleDetailPage(slug: string): PageConfig | null {
       publishedDate: '2024-03-15',
       category: 'Tutorial',
       tags: ['Getting Started', 'Beginner', 'Tutorial'],
-      readTime: '5 min read'
+      readTime: '5 min read',
     },
     'advanced-tips': {
       slug: 'advanced-tips',
       title: 'Advanced Tips & Tricks',
-      excerpt: 'Take your skills to the next level with these professional tips and advanced techniques.',
+      excerpt:
+        'Take your skills to the next level with these professional tips and advanced techniques.',
       content: `
         <h2>Advanced Techniques</h2>
         <p>Ready to level up? These advanced tips and tricks will help you become a power user.</p>
@@ -335,12 +346,13 @@ function getMockArticleDetailPage(slug: string): PageConfig | null {
       publishedDate: '2024-03-12',
       category: 'Tips',
       tags: ['Advanced', 'Tips', 'Productivity'],
-      readTime: '8 min read'
+      readTime: '8 min read',
     },
     'scalable-apps': {
       slug: 'scalable-apps',
       title: 'Building Scalable Applications',
-      excerpt: 'Learn how to architect and build applications that scale with your business growth.',
+      excerpt:
+        'Learn how to architect and build applications that scale with your business growth.',
       content: `
         <h2>Scalability Fundamentals</h2>
         <p>Building applications that scale requires careful planning and architecture decisions from the start.</p>
@@ -363,8 +375,8 @@ function getMockArticleDetailPage(slug: string): PageConfig | null {
       publishedDate: '2024-03-10',
       category: 'Development',
       tags: ['Architecture', 'Scalability', 'Performance'],
-      readTime: '12 min read'
-    }
+      readTime: '12 min read',
+    },
   };
 
   const article = mockArticles[slug];
@@ -393,7 +405,8 @@ function getMockArticleDetailPage(slug: string): PageConfig | null {
               justify: 'center',
               padding: 'section',
               contentClass: 'max-w-4xl mx-auto text-center',
-              class: 'px-12 bg-gradient-to-b from-primary-50 to-surface-0 dark:from-surface-800 dark:to-surface-900'
+              class:
+                'px-12 bg-gradient-to-b from-primary-50 to-surface-0 dark:from-surface-800 dark:to-surface-900',
             },
             components: [
               {
@@ -401,51 +414,65 @@ function getMockArticleDetailPage(slug: string): PageConfig | null {
                 component: 'H1_TextField',
                 props: {
                   text: article.category,
-                  class: 'text-primary-500 text-sm font-semibold uppercase mb-4'
+                  class:
+                    'text-primary-500 text-sm font-semibold uppercase mb-4',
                 },
                 content: {
-                  title: article.category
-                }
+                  title: article.category,
+                },
               },
               {
                 name: 'article-title',
                 component: 'H1_TextField',
                 props: {
                   text: article.title,
-                  class: 'text-5xl font-bold text-surface-900 dark:text-surface-0 mb-6'
+                  class:
+                    'text-5xl font-bold text-surface-900 dark:text-surface-0 mb-6',
                 },
                 content: {
-                  title: article.title
-                }
+                  title: article.title,
+                },
               },
               {
                 name: 'article-excerpt',
                 component: 'H1_TextField',
                 props: {
                   text: article.excerpt,
-                  class: 'text-xl text-surface-600 dark:text-surface-400 mb-8'
+                  class: 'text-xl text-surface-600 dark:text-surface-400 mb-8',
                 },
                 content: {
-                  title: article.excerpt
-                }
+                  title: article.excerpt,
+                },
               },
               {
                 name: 'article-metadata',
                 component: 'Metadata',
                 props: {
                   items: [
-                    { label: 'Author', value: article.author, icon: 'pi pi-user' },
-                    { label: 'Published', value: article.publishedDate, icon: 'pi pi-calendar' },
-                    { label: 'Read Time', value: article.readTime, icon: 'pi pi-clock' }
+                    {
+                      label: 'Author',
+                      value: article.author,
+                      icon: 'pi pi-user',
+                    },
+                    {
+                      label: 'Published',
+                      value: article.publishedDate,
+                      icon: 'pi pi-calendar',
+                    },
+                    {
+                      label: 'Read Time',
+                      value: article.readTime,
+                      icon: 'pi pi-clock',
+                    },
                   ],
                   layout: 'horizontal',
                   separator: true,
-                  class: 'justify-center'
-                }
-              }
-            ]
-          }
-        ]
+                  class: 'justify-center',
+                },
+              },
+            ],
+          },
+        ],
       },
       // Article cover image
       {
@@ -457,7 +484,7 @@ function getMockArticleDetailPage(slug: string): PageConfig | null {
             component: 'BaseLayout',
             props: {
               padding: 'section',
-              contentClass: 'max-w-4xl mx-auto'
+              contentClass: 'max-w-4xl mx-auto',
             },
             components: [
               {
@@ -466,12 +493,12 @@ function getMockArticleDetailPage(slug: string): PageConfig | null {
                 props: {
                   src: article.coverImage,
                   alt: article.title,
-                  class: 'w-full rounded-xl shadow-2xl'
-                }
-              }
-            ]
-          }
-        ]
+                  class: 'w-full rounded-xl shadow-2xl',
+                },
+              },
+            ],
+          },
+        ],
       },
       // Article content
       {
@@ -483,7 +510,7 @@ function getMockArticleDetailPage(slug: string): PageConfig | null {
             component: 'BaseLayout',
             props: {
               padding: 'section',
-              contentClass: 'max-w-3xl mx-auto'
+              contentClass: 'max-w-3xl mx-auto',
             },
             components: [
               {
@@ -492,12 +519,12 @@ function getMockArticleDetailPage(slug: string): PageConfig | null {
                 props: {
                   content: article.content,
                   format: 'html',
-                  class: 'prose prose-lg dark:prose-invert max-w-none'
-                }
-              }
-            ]
-          }
-        ]
+                  class: 'prose prose-lg dark:prose-invert max-w-none',
+                },
+              },
+            ],
+          },
+        ],
       },
       // Article tags
       {
@@ -509,7 +536,7 @@ function getMockArticleDetailPage(slug: string): PageConfig | null {
             component: 'BaseLayout',
             props: {
               padding: 'md',
-              contentClass: 'max-w-3xl mx-auto'
+              contentClass: 'max-w-3xl mx-auto',
             },
             components: [
               {
@@ -517,11 +544,12 @@ function getMockArticleDetailPage(slug: string): PageConfig | null {
                 component: 'H1_TextField',
                 props: {
                   text: 'Tags:',
-                  class: 'text-sm font-semibold text-surface-700 dark:text-surface-300 mb-2'
+                  class:
+                    'text-sm font-semibold text-surface-700 dark:text-surface-300 mb-2',
                 },
                 content: {
-                  title: 'Tags:'
-                }
+                  title: 'Tags:',
+                },
               },
               {
                 name: 'tags-list',
@@ -529,23 +557,24 @@ function getMockArticleDetailPage(slug: string): PageConfig | null {
                 props: {
                   layout: 'flex',
                   gap: 'sm',
-                  wrap: true
+                  wrap: true,
                 },
                 components: article.tags.map((tag: string) => ({
                   name: `tag-${tag.toLowerCase().replace(/\s+/g, '-')}`,
                   component: 'H1_TextField',
                   props: {
                     text: tag,
-                    class: 'px-3 py-1 w-fit bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300 rounded-full text-sm'
+                    class:
+                      'px-3 py-1 w-fit bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300 rounded-full text-sm',
                   },
                   content: {
-                    title: tag
-                  }
-                }))
-              }
-            ]
-          }
-        ]
+                    title: tag,
+                  },
+                })),
+              },
+            ],
+          },
+        ],
       },
       // Share buttons
       {
@@ -557,7 +586,8 @@ function getMockArticleDetailPage(slug: string): PageConfig | null {
             component: 'BaseLayout',
             props: {
               padding: 'section',
-              contentClass: 'max-w-3xl mx-auto border-t border-surface-200 dark:border-surface-700 pt-8'
+              contentClass:
+                'max-w-3xl mx-auto border-t border-surface-200 dark:border-surface-700 pt-8',
             },
             components: [
               {
@@ -568,13 +598,13 @@ function getMockArticleDetailPage(slug: string): PageConfig | null {
                   title: article.title,
                   platforms: ['twitter', 'facebook', 'linkedin', 'email'],
                   layout: 'horizontal',
-                  class: 'justify-center'
-                }
-              }
-            ]
-          }
-        ]
-      }
+                  class: 'justify-center',
+                },
+              },
+            ],
+          },
+        ],
+      },
     ],
     seoMeta: {
       title: `${article.title} - Blog`,
@@ -582,7 +612,7 @@ function getMockArticleDetailPage(slug: string): PageConfig | null {
       ogImage: article.coverImage,
       author: article.author,
       publishedDate: article.publishedDate,
-      type: 'article'
+      type: 'article',
     },
     meta: {
       type: 'collection-detail',
@@ -591,90 +621,101 @@ function getMockArticleDetailPage(slug: string): PageConfig | null {
         type: 'blog',
         isDetail: true,
         itemSlug: slug,
-        parentPage: '/articles/blog'
-      }
-    }
+        parentPage: '/articles/blog',
+      },
+    },
   };
 }
 
 // Mock database of pages for development
 function getMockPage(slugPath: string): PageConfig | null {
-
   const pages: Record<string, PageConfig> = {
-    'home': {
+    home: {
       name: 'home',
       path: '/',
       blocks: [
         // Predefined Widget: Hero Section
         {
-          name: "HeroWidget_2",
-          component: "HeroWidget_2",
-          type: "predefined",
+          name: 'HeroWidget_2',
+          component: 'HeroWidget_2',
+          type: 'predefined',
           props: {
-            title: "Uhuy",
-            subtitle: "faster than ever before",
-            description: "Transform your ideas into reality with our powerful platform",
-            primaryButtonLabel: "Get Started",
-            primaryButtonLink: "/signup",
-            secondaryButtonLabel: "View Demo",
-            secondaryButtonLink: "/demo",
-            image: "/demo/images/blocks/hero/hero-1.png",
-            imageAlt: "Product Screenshot"
-          }
+            title: 'Uhuy',
+            subtitle: 'faster than ever before',
+            description:
+              'Transform your ideas into reality with our powerful platform',
+            primaryButtonLabel: 'Get Started',
+            primaryButtonLink: '/signup',
+            secondaryButtonLabel: 'View Demo',
+            secondaryButtonLink: '/demo',
+            image: '/demo/images/blocks/hero/hero-1.png',
+            imageAlt: 'Product Screenshot',
+          },
         },
         {
-          name: "FeatureBlock",
-          component: "FeatureBlock",
-          type: "predefined",
+          name: 'FeatureBlock',
+          component: 'FeatureBlock',
+          type: 'predefined',
           props: {
-            title: "Empower Your Development",
-            subtitle: "with Cutting-Edge Features",
+            title: 'Empower Your Development',
+            subtitle: 'with Cutting-Edge Features',
             features: [
               {
-                icon: "pi pi-cog",
-                title: "Customizable",
-                description: "Tailor the platform to fit your unique needs."
+                icon: 'pi pi-cog',
+                title: 'Customizable',
+                description: 'Tailor the platform to fit your unique needs.',
               },
               {
-                icon: "pi pi-cloud",
-                title: "Cloud-Based",
-                description: "Access your projects from anywhere, anytime."
+                icon: 'pi pi-cloud',
+                title: 'Cloud-Based',
+                description: 'Access your projects from anywhere, anytime.',
               },
               {
-                icon: "pi pi-lock",
-                title: "Secure",
-                description: "Top-notch security to protect your data."
-              }, {
-                icon: "pi pi-thumbs-up",
-                title: "User-Friendly",
-                description: "Intuitive design for a seamless experience."
-              }, {
-                icon: "pi pi-shield",
-                title: "Reliable",
-                description: "99.9% uptime guarantee for uninterrupted access."
-              }
-            ]
-          }
+                icon: 'pi pi-lock',
+                title: 'Secure',
+                description: 'Top-notch security to protect your data.',
+              },
+              {
+                icon: 'pi pi-thumbs-up',
+                title: 'User-Friendly',
+                description: 'Intuitive design for a seamless experience.',
+              },
+              {
+                icon: 'pi pi-shield',
+                title: 'Reliable',
+                description: '99.9% uptime guarantee for uninterrupted access.',
+              },
+            ],
+          },
         },
         {
-          name: "TestimonialsBlock",
-          component: "TestimonialsBlock",
-          type: "predefined",
+          name: 'TestimonialsBlock',
+          component: 'TestimonialsBlock',
+          type: 'predefined',
           props: {
-            title: "What Our Users Say",
+            title: 'What Our Users Say',
             testimonials: [
               {
-                quote: "This platform has revolutionized the way we develop applications. Highly recommended!",
-                user: { name: "Jane Doe", role: "CTO, TechCorp" }
+                quote:
+                  'This platform has revolutionized the way we develop applications. Highly recommended!',
+                user: { name: 'Jane Doe', role: 'CTO, TechCorp' },
               },
               {
-                quote: "The features and ease of use are unparalleled. It has boosted our productivity significantly.",
-                user: { name: "John Smith", role: "Lead Developer, DevSolutions" }
+                quote:
+                  'The features and ease of use are unparalleled. It has boosted our productivity significantly.',
+                user: {
+                  name: 'John Smith',
+                  role: 'Lead Developer, DevSolutions',
+                },
               },
               {
-                quote: "A game-changer in the industry. The support team is also fantastic!",
-                user: { name: "Emily Johnson", role: "Product Manager, InnovateX" }
-              }
+                quote:
+                  'A game-changer in the industry. The support team is also fantastic!',
+                user: {
+                  name: 'Emily Johnson',
+                  role: 'Product Manager, InnovateX',
+                },
+              },
             ],
           },
         },
@@ -690,10 +731,12 @@ function getMockPage(slugPath: string): PageConfig | null {
               {
                 icon: 'pi-bolt',
                 title: 'Lightning Fast',
-                description: 'Optimized performance for the best user experience.',
+                description:
+                  'Optimized performance for the best user experience.',
                 bgColor: 'bg-yellow-200',
                 iconColor: 'text-yellow-700',
-                gradient: 'linear-gradient(90deg, rgba(253, 228, 165, 0.2), rgba(187, 199, 205, 0.2)), linear-gradient(180deg, rgba(253, 228, 165, 0.2), rgba(187, 199, 205, 0.2))'
+                gradient:
+                  'linear-gradient(90deg, rgba(253, 228, 165, 0.2), rgba(187, 199, 205, 0.2)), linear-gradient(180deg, rgba(253, 228, 165, 0.2), rgba(187, 199, 205, 0.2))',
               },
               {
                 icon: 'pi-shield',
@@ -701,7 +744,8 @@ function getMockPage(slugPath: string): PageConfig | null {
                 description: 'Enterprise-grade security to protect your data.',
                 bgColor: 'bg-green-200',
                 iconColor: 'text-green-700',
-                gradient: 'linear-gradient(90deg, rgba(145, 226, 237, 0.2), rgba(251, 199, 145, 0.2)), linear-gradient(180deg, rgba(253, 228, 165, 0.2), rgba(172, 180, 223, 0.2))'
+                gradient:
+                  'linear-gradient(90deg, rgba(145, 226, 237, 0.2), rgba(251, 199, 145, 0.2)), linear-gradient(180deg, rgba(253, 228, 165, 0.2), rgba(172, 180, 223, 0.2))',
               },
               {
                 icon: 'pi-users',
@@ -709,16 +753,17 @@ function getMockPage(slugPath: string): PageConfig | null {
                 description: 'Work together seamlessly with your team.',
                 bgColor: 'bg-blue-200',
                 iconColor: 'text-blue-700',
-                gradient: 'linear-gradient(90deg, rgba(145, 226, 237, 0.2), rgba(172, 180, 223, 0.2)), linear-gradient(180deg, rgba(172, 180, 223, 0.2), rgba(246, 158, 188, 0.2))'
-              }
-            ]
-          }
+                gradient:
+                  'linear-gradient(90deg, rgba(145, 226, 237, 0.2), rgba(172, 180, 223, 0.2)), linear-gradient(180deg, rgba(172, 180, 223, 0.2), rgba(246, 158, 188, 0.2))',
+              },
+            ],
+          },
         },
         // Predefined Widget: Highlights
         {
           name: 'HighlightsWidget',
           type: 'predefined',
-          component: 'HighlightsWidget'
+          component: 'HighlightsWidget',
         },
         {
           name: 'pricing-section',
@@ -737,36 +782,37 @@ function getMockPage(slugPath: string): PageConfig | null {
                     component: 'H1_TextField',
                     props: {
                       text: 'Starter',
-                      class: 'text-2xl font-bold text-surface-900 dark:text-surface-0'
+                      class:
+                        'text-2xl font-bold text-surface-900 dark:text-surface-0',
                     },
                     content: {
                       title: 'Starter',
-                    }
+                    },
                   },
                   {
                     name: 'subtitle',
                     component: 'H1_TextField',
                     props: {
                       text: 'Perfect for individuals',
-                      class: 'text-surface-600 dark:text-surface-400 text-sm'
+                      class: 'text-surface-600 dark:text-surface-400 text-sm',
                     },
                     content: {
                       description: 'Perfect for individuals',
-                    }
-                  }
+                    },
+                  },
                 ],
                 contentComponents: [
                   {
                     name: 'price',
                     component: 'H1_TextField',
                     props: {
-                      class: 'text-5xl font-bold text-surface-900 dark:text-surface-0'
+                      class:
+                        'text-5xl font-bold text-surface-900 dark:text-surface-0',
                     },
                     content: {
                       title: '$9/month',
-                    }
+                    },
                   },
-
                 ],
                 footerComponents: [
                   {
@@ -774,10 +820,10 @@ function getMockPage(slugPath: string): PageConfig | null {
                     component: 'ButtonField',
                     props: {
                       label: 'Get Started',
-                      class: 'w-full'
-                    }
-                  }
-                ]
+                      class: 'w-full',
+                    },
+                  },
+                ],
               },
               {
                 highlight: true,
@@ -789,9 +835,9 @@ function getMockPage(slugPath: string): PageConfig | null {
                     props: {
                       value: 'Most Popular',
                       severity: 'success',
-                      class: 'mb-4 text-sm'
-                    }
-                  }
+                      class: 'mb-4 text-sm',
+                    },
+                  },
                 ],
                 headerComponents: [
                   {
@@ -799,22 +845,23 @@ function getMockPage(slugPath: string): PageConfig | null {
                     component: 'H1_TextField',
                     props: {
                       text: 'Pro',
-                      class: 'text-2xl font-bold text-surface-900 dark:text-surface-0'
+                      class:
+                        'text-2xl font-bold text-surface-900 dark:text-surface-0',
                     },
                     content: {
                       title: 'Pro',
-                    }
+                    },
                   },
                   {
                     name: 'subtitle',
                     component: 'H1_TextField',
                     props: {
-                      class: 'text-surface-600 dark:text-surface-400 text-sm'
+                      class: 'text-surface-600 dark:text-surface-400 text-sm',
                     },
                     content: {
                       description: 'Perfect for professionals',
-                    }
-                  }
+                    },
+                  },
                 ],
                 contentComponents: [
                   {
@@ -822,11 +869,12 @@ function getMockPage(slugPath: string): PageConfig | null {
                     component: 'H1_TextField',
                     props: {
                       text: '$29',
-                      class: 'text-5xl font-bold text-surface-900 dark:text-surface-0'
+                      class:
+                        'text-5xl font-bold text-surface-900 dark:text-surface-0',
                     },
                     content: {
                       title: '$29/month',
-                    }
+                    },
                   },
                 ],
                 footerComponents: [
@@ -835,13 +883,13 @@ function getMockPage(slugPath: string): PageConfig | null {
                     component: 'ButtonField',
                     props: {
                       label: 'Start Free Trial',
-                      class: 'w-full'
-                    }
-                  }
-                ]
-              }
-            ]
-          }
+                      class: 'w-full',
+                    },
+                  },
+                ],
+              },
+            ],
+          },
         },
         // Predefined Widget: Pricing
         {
@@ -854,15 +902,16 @@ function getMockPage(slugPath: string): PageConfig | null {
             decorationLeft: '/images/light/line-6.svg',
             decorationRight: '/images/light/line-7.svg',
             showDecorations: false,
-            class: 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900 dark:to-purple-900',
+            class:
+              'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900 dark:to-purple-900',
             actions: [
               {
                 label: 'Get Started',
                 url: '/signup',
-                variant: 'primary'
-              }
-            ]
-          }
+                variant: 'primary',
+              },
+            ],
+          },
         },
         // Custom Block: Testimonials
         {
@@ -874,8 +923,8 @@ function getMockPage(slugPath: string): PageConfig | null {
               component: 'H1_TextField',
               content: {
                 title: 'Join Newsletter',
-                description: 'Stay updated with our latest news and offers.'
-              }
+                description: 'Stay updated with our latest news and offers.',
+              },
             },
             {
               name: 'button-cta',
@@ -884,27 +933,28 @@ function getMockPage(slugPath: string): PageConfig | null {
                 label: 'Subscribe Now',
                 rounded: true,
                 severity: 'primary',
-                size: 'large'
-              }
-            }
+                size: 'large',
+              },
+            },
           ],
           props: {
-            class: 'py-16 text-center'
-          }
+            class: 'py-16 text-center',
+          },
         },
       ],
       seoMeta: {
         title: 'Home - Welcome to Our Platform',
         description: 'Transform your workflow with our innovative platform.',
-        ogImage: 'https://primefaces.org/cdn/primevue/images/landing/screen-1.png',
-        type: 'website'
+        ogImage:
+          'https://primefaces.org/cdn/primevue/images/landing/screen-1.png',
+        type: 'website',
       },
       meta: {
         type: 'landing',
-        category: 'utility'
-      }
+        category: 'utility',
+      },
     },
-    'highlights': {
+    highlights: {
       name: 'highlights',
       path: '/highlights',
       blocks: [
@@ -915,12 +965,13 @@ function getMockPage(slugPath: string): PageConfig | null {
           props: {
             title: 'Welcome to Our Platform',
             subtitle: 'Innovative Solutions',
-            description: 'Transform your workflow with our cutting-edge platform. Experience seamless integration and powerful features.',
+            description:
+              'Transform your workflow with our cutting-edge platform. Experience seamless integration and powerful features.',
             buttonLabel: 'Get Started',
             buttonLink: '/highlights',
             image: '/demo/images/landing/screen-1.png',
-            imageAlt: 'Platform Overview'
-          }
+            imageAlt: 'Platform Overview',
+          },
         },
         // Custom Block: Page Header
         {
@@ -932,15 +983,16 @@ function getMockPage(slugPath: string): PageConfig | null {
               component: 'H1_TextField',
               content: {
                 title: 'Highlights',
-                description: 'Discover our most exciting features and achievements.'
-              }
-            }
-          ]
+                description:
+                  'Discover our most exciting features and achievements.',
+              },
+            },
+          ],
         },
         // Predefined Widget
         {
           name: 'HighlightsWidget',
-          component: 'HighlightsWidget'
+          component: 'HighlightsWidget',
         },
         // Custom Block: Grid Content
         {
@@ -952,36 +1004,35 @@ function getMockPage(slugPath: string): PageConfig | null {
               component: 'ImageField',
               content: {
                 src: 'https://primefaces.org/cdn/primevue/images/landing/screen-2.png',
-                alt: 'Award Winning Design'
-              }
+                alt: 'Award Winning Design',
+              },
             },
             {
               name: 'highlight-1-text',
               component: 'H1_TextField',
               content: {
                 title: 'Award Winning Design',
-                description: 'Recognized globally for exceptional UX.'
-              }
+                description: 'Recognized globally for exceptional UX.',
+              },
             },
             {
               name: 'highlight-1-button',
               component: 'ButtonField',
               props: { rounded: true, outlined: true },
-              content: { label: 'Learn More', icon: 'pi pi-info-circle' }
-            }
-          ]
+              content: { label: 'Learn More', icon: 'pi pi-info-circle' },
+            },
+          ],
         },
-
       ],
       seoMeta: {
         title: 'Highlights - Our Best Features',
         description: 'Explore our award-winning features.',
-        type: 'website'
+        type: 'website',
       },
       meta: {
         type: 'static',
-        category: 'content'
-      }
+        category: 'content',
+      },
     },
     'articles/blog': {
       name: 'blog',
@@ -1004,7 +1055,7 @@ function getMockPage(slugPath: string): PageConfig | null {
                 backgroundImage: '/demo/images/blocks/about/about-1.png',
                 overlay: true,
                 overlayColor: 'rgba(0, 0, 0, 0.8)',
-                minHeight: '400px'
+                minHeight: '400px',
               },
               components: [
                 {
@@ -1012,26 +1063,26 @@ function getMockPage(slugPath: string): PageConfig | null {
                   component: 'H1_TextField',
                   props: {
                     text: 'Blog & Articles',
-                    class: 'text-white text-6xl font-bold mb-6'
+                    class: 'text-white text-6xl font-bold mb-6',
                   },
                   content: {
-                    title: 'Blog & Articles'
-                  }
+                    title: 'Blog & Articles',
+                  },
                 },
                 {
                   name: 'subtitle',
                   component: 'H1_TextField',
                   props: {
                     text: 'Insights, tutorials, and industry news',
-                    class: 'text-white text-2xl mb-8'
+                    class: 'text-white text-2xl mb-8',
                   },
                   content: {
-                    title: 'Insights, tutorials, and industry news'
-                  }
-                }
-              ]
-            }
-          ]
+                    title: 'Insights, tutorials, and industry news',
+                  },
+                },
+              ],
+            },
+          ],
         },
         {
           name: 'blog-listing',
@@ -1041,7 +1092,7 @@ function getMockPage(slugPath: string): PageConfig | null {
             dataSource: {
               type: 'api',
               endpoint: '/api/blog/posts',
-              params: {}
+              params: {},
             },
             fieldMapping: {
               thumbnail: 'featured_image',
@@ -1050,7 +1101,7 @@ function getMockPage(slugPath: string): PageConfig | null {
               author: 'author_name',
               date: 'published_date',
               category: 'post_category',
-              slug: 'post_slug'
+              slug: 'post_slug',
             },
             itemComponent: {
               name: 'blog-card',
@@ -1058,7 +1109,8 @@ function getMockPage(slugPath: string): PageConfig | null {
               props: {
                 layout: 'flex',
                 direction: 'column',
-                class: 'bg-surface-0 dark:bg-surface-800 rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 h-full'
+                class:
+                  'bg-surface-0 dark:bg-surface-800 rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 h-full',
               },
               components: [
                 {
@@ -1068,8 +1120,8 @@ function getMockPage(slugPath: string): PageConfig | null {
                     src: '{{item.thumbnail}}',
                     alt: '{{item.title}}',
                     class: 'w-full object-cover',
-                    height: '200px'
-                  }
+                    height: '200px',
+                  },
                 },
                 {
                   name: 'content',
@@ -1079,7 +1131,7 @@ function getMockPage(slugPath: string): PageConfig | null {
                     direction: 'column',
                     gap: 'sm',
                     padding: 'md',
-                    class: 'h-fit'
+                    class: 'h-fit',
                   },
                   components: [
                     {
@@ -1087,35 +1139,36 @@ function getMockPage(slugPath: string): PageConfig | null {
                       component: 'H1_TextField',
                       props: {
                         text: '{{item.category}}',
-                        class: 'text-primary-500 text-sm font-semibold uppercase'
+                        class:
+                          'text-primary-500 text-sm font-semibold uppercase',
                       },
                       content: {
                         title: '{{item.category}}',
-                      }
+                      },
                     },
                     {
                       name: 'title',
                       component: 'H1_TextField',
                       props: {
                         text: '{{item.title}}',
-                        class: 'text-2xl font-bold text-surface-900 dark:text-surface-0 text-xl mb-2'
+                        class:
+                          'text-2xl font-bold text-surface-900 dark:text-surface-0 text-xl mb-2',
                       },
                       content: {
                         title: '{{item.title}}',
-                      }
-
+                      },
                     },
                     {
                       name: 'excerpt',
                       component: 'H1_TextField',
                       props: {
                         text: '{{item.excerpt}}',
-                        class: 'text-surface-600 dark:text-surface-400 mb-4 text-sm font-regular! line-clamp-3'
+                        class:
+                          'text-surface-600 dark:text-surface-400 mb-4 text-sm font-regular! line-clamp-3',
                       },
                       content: {
                         title: '{{item.excerpt}}',
-                      }
-
+                      },
                     },
                     {
                       name: 'meta',
@@ -1124,7 +1177,8 @@ function getMockPage(slugPath: string): PageConfig | null {
                         layout: 'flex',
                         justify: 'between',
                         align: 'center',
-                        class: ' pt-4 border-t border-surface-200 dark:border-surface-700'
+                        class:
+                          ' pt-4 border-t border-surface-200 dark:border-surface-700',
                       },
                       components: [
                         {
@@ -1132,24 +1186,25 @@ function getMockPage(slugPath: string): PageConfig | null {
                           component: 'H1_TextField',
                           props: {
                             text: '{{item.author}}',
-                            class: 'text-sm text-surface-600 dark:text-surface-400'
+                            class:
+                              'text-sm text-surface-600 dark:text-surface-400',
                           },
                           content: {
                             title: '{{item.author}}',
-                          }
+                          },
                         },
                         {
                           name: 'date',
                           component: 'H1_TextField',
                           props: {
                             text: '{{item.date}}',
-                            class: 'text-sm text-surface-500'
+                            class: 'text-sm text-surface-500',
                           },
                           content: {
                             title: '{{item.date}}',
-                          }
-                        }
-                      ]
+                          },
+                        },
+                      ],
                     },
                     {
                       name: 'read-more',
@@ -1158,12 +1213,12 @@ function getMockPage(slugPath: string): PageConfig | null {
                         label: 'Read More',
                         link: '/articles/{{item.slug}}',
                         text: true,
-                        class: 'p-0 mt-2'
-                      }
-                    }
-                  ]
-                }
-              ]
+                        class: 'p-0 mt-2',
+                      },
+                    },
+                  ],
+                },
+              ],
             },
             layout: 'grid',
             columns: '3',
@@ -1171,28 +1226,28 @@ function getMockPage(slugPath: string): PageConfig | null {
             pagination: {
               enabled: true,
               perPage: 6,
-              type: 'numbered'
+              type: 'numbered',
             },
             filters: {
               enabled: true,
-              fields: ['category']
-            }
-          }
-        }
+              fields: ['category'],
+            },
+          },
+        },
       ],
       seoMeta: {
         title: 'Blog - Insights & Tutorials',
         description: 'Read our latest blog posts.',
-        type: 'website'
+        type: 'website',
       },
       meta: {
         type: 'collection-list',
         category: 'content',
         collection: {
           type: 'blog',
-          isDetail: false
-        }
-      }
+          isDetail: false,
+        },
+      },
     },
     'articles/news': {
       name: 'news',
@@ -1207,10 +1262,10 @@ function getMockPage(slugPath: string): PageConfig | null {
               component: 'H1_TextField',
               content: {
                 title: 'News',
-                description: 'Latest updates and announcements.'
-              }
-            }
-          ]
+                description: 'Latest updates and announcements.',
+              },
+            },
+          ],
         },
         {
           name: 'flex-column',
@@ -1221,8 +1276,8 @@ function getMockPage(slugPath: string): PageConfig | null {
               component: 'H1_TextField',
               content: {
                 title: 'Introducing New AI Features',
-                description: 'Revolutionary AI capabilities launching now.'
-              }
+                description: 'Revolutionary AI capabilities launching now.',
+              },
             },
             {
               name: 'news-1-image',
@@ -1230,32 +1285,31 @@ function getMockPage(slugPath: string): PageConfig | null {
               props: { class: 'rounded-lg shadow-lg' },
               content: {
                 src: 'https://primefaces.org/cdn/primevue/images/landing/screen-2.png',
-                alt: 'Product Launch'
-              }
+                alt: 'Product Launch',
+              },
             },
             {
               name: 'news-1-button',
               component: 'ButtonField',
               props: { rounded: true, severity: 'info', size: 'large' },
-              content: { label: 'Try It Now', icon: 'pi pi-sparkles' }
-            }
+              content: { label: 'Try It Now', icon: 'pi pi-sparkles' },
+            },
           ],
           props: {
-            class: 'max-w-4xl mx-auto py-16'
-          }
+            class: 'max-w-4xl mx-auto py-16',
+          },
         },
-
       ],
       seoMeta: {
         title: 'News - Company Updates',
         description: 'Stay updated with latest news.',
-        type: 'website'
+        type: 'website',
       },
       meta: {
         type: 'static',
-        category: 'content'
-      }
-    }
+        category: 'content',
+      },
+    },
   };
 
   // First check if it's a static page
@@ -1291,4 +1345,3 @@ function getMockPage2(slugPath: string): PageConfig | null {
 
   return null;
 }
-

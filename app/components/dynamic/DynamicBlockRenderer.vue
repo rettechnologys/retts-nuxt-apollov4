@@ -8,15 +8,15 @@
 
   <!-- Custom Field-Based Block -->
   <div v-else v-bind="blockConfig.props">
-    <!-- <DynamicComponentRenderer
+    <DynamicComponentRenderer
       v-for="(component, index) in blockConfig.components"
       :key="`${component.name}-${index}`"
       :component-config="component"
-    /> -->
-    <DynamicComponentRenderer
+    />
+    <!-- <DynamicComponentRenderer
       :key="`${blockConfig.child.name}`"
       :component-config="blockConfig.child"
-    />
+    /> -->
   </div>
 </template>
 
