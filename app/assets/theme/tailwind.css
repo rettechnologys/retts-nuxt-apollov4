@@ -1,3 +1,15 @@
-@import "tailwindcss";
-@import "tailwindcss-primeui";
+@import 'tailwindcss';
+@import 'tailwindcss-primeui';
+@import '../others/styles/flags/flags.css';
 @custom-variant dark (&:where(.app-dark, .app-dark *));
+
+/* Container query support */
+@utility container-type-normal {
+  container-type: normal;
+}
+@utility container-type-size {
+  container-type: size;
+}
+@utility container-type-inline {
+  container-type: inline-size;
+}

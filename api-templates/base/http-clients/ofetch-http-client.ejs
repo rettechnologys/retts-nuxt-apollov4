@@ -1,0 +1,256 @@
+<%
+const { apiConfig, generateResponses, config } = it;
+%>
+
+import type { FetchOptions, FetchResponse, FetchError } from 'ofetch';
+import { $fetch } from 'ofetch';
+import { setupInterceptorsTo } from '~/utils/plugins/ofetchInterceptorsPlugin';
+
+export type QueryParamsType = Record<string | number, any>;
+
+export interface FullRequestParams extends Omit<FetchOptions, "body" | "params" | "query" | "baseURL" | "method"> {
+  /** set parameter to `true` for call `securityWorker` for this request */
+  secure?: boolean;
+  /** request path */
+  path: string;
+  /** content type of request body */
+  type?: ContentType;
+  /** query params */
+  query?: QueryParamsType;
+  /** format of response (i.e. response.json() -> format: "json") */
+  format?: ResponseFormat;
+  /** request body */
+  body?: unknown;
+  /** HTTP method */
+  method?: string;
+}
+
+export type RequestParams = Omit<FullRequestParams, "body" | "method" | "query" | "path">;
+
+export interface ApiConfig<SecurityDataType = unknown> extends Omit<FetchOptions, "body" | "query"> {
+  securityWorker?: (securityData: SecurityDataType | null) => Promise<FetchOptions | void> | FetchOptions | void;
+  secure?: boolean;
+  format?: ResponseFormat;
+  baseURL?: string;
+}
+
+export enum ContentType {
+  Json = "application/json",
+  FormData = "multipart/form-data",
+  UrlEncoded = "application/x-www-form-urlencoded",
+  Text = "text/plain",
+}
+
+export type ResponseFormat = "json" | "text" | "blob" | "arrayBuffer" | "stream";
+
+export interface HttpResponse<T = any> {
+  data: T;
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
+}
+
+export class HttpClient<SecurityDataType = unknown> {
+    private baseURL: string;
+    private defaultOptions: FetchOptions;
+    private securityData: SecurityDataType | null = null;
+    private securityWorker?: ApiConfig<SecurityDataType>["securityWorker"];
+    private secure?: boolean;
+    private format?: ResponseFormat;
+    private interceptors: {
+      request: Array<(config: FetchOptions) => FetchOptions | Promise<FetchOptions>>;
+      response: Array<(response: any) => any | Promise<any>>;
+      error: Array<(error: FetchError) => any | Promise<any>>;
+    };
+
+    constructor({ securityWorker, secure, format, baseURL, ...fetchConfig }: ApiConfig<SecurityDataType> = {}) {
+        this.baseURL = baseURL || "<%~ apiConfig.baseUrl %>";
+        this.defaultOptions = { 
+          baseURL: this.baseURL,
+          ...fetchConfig 
+        };
+        this.secure = secure;
+        this.format = format;
+        this.securityWorker = securityWorker;
+        this.interceptors = {
+          request: [],
+          response: [],
+          error: []
+        };
+        
+        // Setup interceptors
+        setupInterceptorsTo(this);
+    }
+
+    public setSecurityData = (data: SecurityDataType | null) => {
+        this.securityData = data;
+    }
+
+    public addRequestInterceptor = (interceptor: (config: FetchOptions) => FetchOptions | Promise<FetchOptions>) => {
+        this.interceptors.request.push(interceptor);
+    }
+
+    public addResponseInterceptor = (interceptor: (response: any) => any | Promise<any>) => {
+        this.interceptors.response.push(interceptor);
+    }
+
+    public addErrorInterceptor = (interceptor: (error: FetchError) => any | Promise<any>) => {
+        this.interceptors.error.push(interceptor);
+    }
+
+    protected mergeRequestParams(params1: FetchOptions, params2?: FetchOptions): FetchOptions {
+      return {
+        ...this.defaultOptions,
+        ...params1,
+        ...(params2 || {}),
+        headers: {
+          ...(this.defaultOptions.headers || {}),
+          ...(params1.headers || {}),
+          ...((params2 && params2.headers) || {}),
+        },
+      };
+    }
+
+    protected stringifyFormItem(formItem: unknown) {
+      if (typeof formItem === "object" && formItem !== null) {
+        return JSON.stringify(formItem);
+      } else {
+        return `${formItem}`;
+      }
+    }
+
+    protected createFormData(input: Record<string, unknown>): FormData {
+      return Object.keys(input || {}).reduce((formData, key) => {
+        const property = input[key];
+        const propertyContent: any[] = (property instanceof Array) ? property : [property];
+
+        for (const formItem of propertyContent) {
+          const isFileType = formItem instanceof Blob || formItem instanceof File;
+          if(formItem !== undefined && formItem !== 'undefined') {
+            formData.append(
+              key,
+              isFileType ? formItem : this.stringifyFormItem(formItem)
+            );
+          }
+        }
+
+        return formData;
+      }, new FormData());
+    }
+
+    protected async applyRequestInterceptors(config: FetchOptions): Promise<FetchOptions> {
+      let modifiedConfig = { ...config };
+      
+      for (const interceptor of this.interceptors.request) {
+        modifiedConfig = await interceptor(modifiedConfig);
+      }
+      
+      return modifiedConfig;
+    }
+
+    protected async applyResponseInterceptors(response: any): Promise<any> {
+      let modifiedResponse = response;
+      
+      for (const interceptor of this.interceptors.response) {
+        modifiedResponse = await interceptor(modifiedResponse);
+      }
+      
+      return modifiedResponse;
+    }
+
+    protected async applyErrorInterceptors(error: FetchError): Promise<any> {
+      let modifiedError = error;
+      
+      for (const interceptor of this.interceptors.error) {
+        try {
+          modifiedError = await interceptor(modifiedError);
+        } catch (interceptorError) {
+          throw interceptorError;
+        }
+      }
+      
+      throw modifiedError;
+    }
+
+    public request = async <T = any, _E = any>({
+        secure,
+        path,
+        type,
+        query,
+        format,
+        body,
+        method = 'GET',
+        ...params
+<% if (config.unwrapResponseData) { %>
+    }: FullRequestParams): Promise<T> => {
+<% } else { %>
+    }: FullRequestParams): Promise<HttpResponse<T>> => {
+<% } %>
+        try {
+          // Apply security
+          const secureParams = ((typeof secure === 'boolean' ? secure : this.secure) && 
+            this.securityWorker && (await this.securityWorker(this.securityData))) || {};
+          
+          // Merge request parameters
+          let requestParams = this.mergeRequestParams(params, secureParams);
+          
+          // Handle different content types
+          if (type === ContentType.FormData && body && body !== null && typeof body === "object") {
+            body = this.createFormData(body as Record<string, unknown>);
+          } else if (type === ContentType.Text && body && body !== null && typeof body !== "string") {
+            body = JSON.stringify(body);
+          }
+
+          // Build final request config
+          const requestConfig: FetchOptions = {
+            ...requestParams,
+            method: method.toUpperCase(),
+            baseURL: this.baseURL,
+            headers: {
+              ...(requestParams.headers || {}),
+              ...(type && type !== ContentType.FormData ? { "Content-Type": type } : {}),
+            },
+            query,
+            body,
+          };
+
+          // Apply request interceptors
+          const finalConfig = await this.applyRequestInterceptors(requestConfig);
+
+          // Make the request
+          let response: any;
+          const responseFormat = format || this.format || 'json';
+          
+          if (responseFormat === 'json') {
+            response = await $fetch(path, finalConfig);
+          } else if (responseFormat === 'text') {
+            response = await $fetch(path, { ...finalConfig, parseResponse: (txt) => txt });
+          } else if (responseFormat === 'blob') {
+            response = await $fetch(path, { ...finalConfig, responseType: 'blob' });
+          } else if (responseFormat === 'arrayBuffer') {
+            response = await $fetch(path, { ...finalConfig, responseType: 'arrayBuffer' });
+          } else {
+            response = await $fetch(path, finalConfig);
+          }
+
+          // Apply response interceptors
+          const processedResponse = await this.applyResponseInterceptors(response);
+
+<% if (config.unwrapResponseData) { %>
+          return processedResponse;
+<% } else { %>
+          // Create Axios-like response object for compatibility
+          return {
+            data: processedResponse,
+            status: 200, // $fetch doesn't provide status for successful requests
+            statusText: 'OK',
+            headers: {}, // $fetch doesn't provide response headers in the same way
+          } as HttpResponse<T>;
+<% } %>
+
+        } catch (error: any) {
+          // Apply error interceptors
+          await this.applyErrorInterceptors(error as FetchError);
+        }
+    };
+}

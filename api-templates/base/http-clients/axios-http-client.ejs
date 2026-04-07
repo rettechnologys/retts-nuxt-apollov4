@@ -1,0 +1,194 @@
+<%
+const { apiConfig, generateResponses, config } = it;
+%>
+
+import type { AxiosInstance, AxiosRequestConfig, HeadersDefaults, ResponseType,
+AxiosResponse } from "axios";
+import axios from "axios";
+
+export type QueryParamsType = Record<string | number, any>;
+
+  export interface FullRequestParams extends Omit<axiosrequestconfig, "data" |
+    "params" | "url" | "responseType"> {
+    /** set parameter to `true` for call `securityWorker` for this request */
+    secure?: boolean;
+    /** request path */
+    path: string;
+    /** content type of request body */
+    type?: ContentType;
+    /** query params */
+    query?: QueryParamsType;
+    /** format of response (i.e. response.json() -> format: "json") */
+    format?: ResponseType;
+    /** request body */
+    body?: unknown;
+    }
+
+    export type RequestParams = Omit<fullrequestparams, "body" | "method" |
+      "query" | "path">;
+
+      export interface ApiConfig<securitydatatype = unknown> extends
+        Omit<axiosrequestconfig, "data" | "cancelToken"> {
+          securityWorker?: (securityData: SecurityDataType | null) =>
+          Promise<axiosrequestconfig | void> | AxiosRequestConfig | void;
+            secure?: boolean;
+            format?: ResponseType;
+            }
+
+            export enum ContentType {
+            Json = "application/json",
+            FormData = "multipart/form-data",
+            UrlEncoded = "application/x-www-form-urlencoded",
+            Text = "text/plain",
+            }
+
+            export class HttpClient<securitydatatype = unknown> {
+              public instance: AxiosInstance;
+              private securityData: SecurityDataType | null = null;
+              private securityWorker?:
+              ApiConfig<securitydatatype>["securityWorker"];
+                private secure?: boolean;
+                private format?: ResponseType;
+                private interceptorsSetup = false;
+
+                constructor({ securityWorker, secure, format, ...axiosConfig }:
+                ApiConfig<securitydatatype> = {}) {
+                  this.instance = axios.create({ ...axiosConfig, baseURL:
+                  axiosConfig.baseURL || "<%~ apiConfig.baseUrl %>" })
+
+                  this.secure = secure;
+                  this.format = format;
+                  this.securityWorker = securityWorker;
+                  }
+
+                  private setupInterceptors() {
+                  if (this.interceptorsSetup) return;
+
+                  try {
+                  const nuxtApp = useNuxtApp();
+                  if (nuxtApp.$setupAxiosInterceptors) {
+                  nuxtApp.$setupAxiosInterceptors(this.instance);
+                  this.interceptorsSetup = true;
+                  }
+                  } catch (error) {
+                  console.warn('[HttpClient] Failed to setup interceptors:',
+                  error);
+                  }
+                  }
+
+                  public setSecurityData = (data: SecurityDataType | null) => {
+                  this.securityData = data
+                  }
+
+                  protected mergeRequestParams(params1: AxiosRequestConfig,
+                  params2?: AxiosRequestConfig): AxiosRequestConfig {
+                  const method = params1.method || (params2 && params2.method)
+
+                  return {
+                  ...this.instance.defaults,
+                  ...params1,
+                  ...(params2 || {}),
+                  headers: {
+                  ...((method &&
+                  this.instance.defaults.headers[method.toLowerCase() as keyof
+                  HeadersDefaults]) || {}),
+                  ...(params1.headers || {}),
+                  ...((params2 && params2.headers) || {}),
+                  },
+                  };
+                  }
+
+                  protected stringifyFormItem(formItem: unknown) {
+                  if (typeof formItem === "object" && formItem !== null) {
+                  return JSON.stringify(formItem);
+                  } else {
+                  return `${formItem}`;
+                  }
+                  }
+
+                  protected createFormData(input: Record<string, unknown>):
+                    FormData {
+                    return Object.keys(input || {}).reduce((formData, key) => {
+                    const property = input[key];
+
+                    if (Array.isArray(property)) {
+                    // Iterate through the array and append indexed keys
+                    property.forEach((item, index) => {
+                    const isFileType = item instanceof Blob || item instanceof
+                    File;
+                    const indexedKey = `${key}[${index}]`;
+                    formData.append(
+                    indexedKey,
+                    isFileType ? item : this.stringifyFormItem(item),
+                    );
+                    });
+                    } else {
+                    // Handle non-array keys
+                    const isFileType = property instanceof Blob || property
+                    instanceof File;
+                    if (property !== undefined && property !== 'undefined') {
+                    formData.append(
+                    key,
+                    isFileType ? property : this.stringifyFormItem(property),
+                    );
+                    }
+                    }
+
+                    return formData;
+                    }, new FormData());
+                    }
+
+                    public request = async <t = any, _E=any>({
+                      secure,
+                      path,
+                      type,
+                      query,
+                      format,
+                      body,
+                      ...params
+                      <% if (config.unwrapResponseData) { %>
+                      }: FullRequestParams): Promise<t> => {
+                        <% } else { %>
+                        }: FullRequestParams): Promise<axiosresponse<t>> => {
+                          <% } %>
+                          // Setup interceptors lazily on first request
+                          this.setupInterceptors();
+
+                          const secureParams = ((typeof secure === 'boolean' ?
+                          secure : this.secure) && this.securityWorker && (await
+                          this.securityWorker(this.securityData))) || {};
+                          const requestParams = this.mergeRequestParams(params,
+                          secureParams);
+                          const responseFormat = (format || this.format) ||
+                          undefined;
+
+                          if (type === ContentType.FormData && body && body !==
+                          null && typeof body === "object") {
+                          body = this.createFormData(body as Record<string,
+                            unknown>);
+                            }
+
+                            if (type === ContentType.Text && body && body !==
+                            null && typeof body !== "string") {
+                            body = JSON.stringify(body);
+                            }
+
+                            return this.instance.request({
+                            ...requestParams,
+                            headers: {
+                            ...this.instance.defaults.headers.common,
+                            ...(requestParams.headers || {}),
+                            ...(type && type !== ContentType.FormData ? {
+                            "Content-Type": type } : {}),
+                            },
+                            params: query,
+                            responseType: responseFormat,
+                            data: body,
+                            url: path,
+                            <% if (config.unwrapResponseData) { %>
+                            }).then(response => response.data);
+                            <% } else { %>
+                            });
+                            <% } %>
+                            };
+                            }

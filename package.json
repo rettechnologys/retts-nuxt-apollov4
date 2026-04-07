@@ -1,13 +1,18 @@
 {
   "name": "retts-webapp-nuxt-4",
+  "version": "0.0.1",
   "type": "module",
   "private": true,
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
     "generate": "nuxt generate",
+    "type-check": "nuxt typecheck",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "generate-api:dev": "npx swagger-typescript-api generate --modular --module-name-first-tag -p http://localhost:4000/api-docs-json -t ./api-templates/base -o ./modules/data/internal/data-source && prettier --write core/modules/data/internal/data-source && prettier --write ./modules/data/internal/data-source && npm run type-check",
+    "generate-api2test:dev": "npx swagger-typescript-api generate --extract-request-params --extract-request-body --extract-response-body --modular --module-name-first-tag -p http://localhost:4000/api-docs-json -t ./api-templates/base -o ./modules/data/external/data-source",
+    "generate-api:dev-live": "npx swagger-typescript-api generate --modular --module-name-first-tag -p https://retts-webapp-api-dev.retts.cloud/api-docs-json -t ./api-templates/base -o ./modules/data/internal/data-source && prettier --write ./modules/data/internal/data-source"
   },
   "dependencies": {
     "@nuxt/eslint": "^1.10.0",
@@ -16,18 +21,40 @@
     "@nuxt/icon": "^2.1.0",
     "@nuxt/image": "^2.0.0",
     "@nuxt/scripts": "^0.13.0",
+    "@nuxtjs/i18n": "^10.2.1",
+    "@pinia/nuxt": "^0.11.3",
     "@primeuix/themes": "^1.2.5",
     "@primevue/nuxt-module": "^4.4.1",
+    "@retts-packages/utilities-helper": "^1.0.0",
+    "@supercharge/strings": "^2.0.0",
     "@tailwindcss/vite": "^4.1.17",
     "@unhead/vue": "^2.0.19",
+    "@vueuse/core": "^14.1.0",
+    "axios": "^1.13.2",
+    "class-transformer": "^0.5.1",
     "eslint": "^9.39.1",
+    "json2typescript": "^1.6.1",
+    "juice": "^11.0.3",
+    "lodash": "^4.17.21",
+    "luxon": "^3.7.2",
     "nuxt": "^4.2.1",
+    "pinia": "^3.0.4",
     "primeflex": "^3.3.1",
     "primeicons": "^7.0.0",
     "primevue": "^4.4.1",
+    "reflect-metadata": "^0.2.2",
+    "secure-ls": "^2.0.0",
     "tailwindcss": "^4.1.17",
     "tailwindcss-primeui": "^0.6.1",
+    "tsyringe": "^4.10.0",
     "vue": "^3.5.24",
+    "vue-draggable-plus": "^0.6.0",
     "vue-router": "^4.6.3"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.17.21",
+    "prettier": "^3.7.3",
+    "typescript": "^5.9.3",
+    "vue-tsc": "^3.1.5"
   }
 }

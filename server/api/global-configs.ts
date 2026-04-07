@@ -1,9 +1,11 @@
 import type { GlobalConfigs } from "~~/shared"
 
-export default defineEventHandler((event) => {
+export default defineEventHandler(async (event) => {
   const request = event.node.req
   console.log('Request', request.method)
-  const globalConfig: GlobalConfigs = {
+
+
+  const mockGlobalConfig: GlobalConfigs = {
     menus: [
       {
         name: 'home', link: '/', sysMenuLangs: [
@@ -89,6 +91,6 @@ export default defineEventHandler((event) => {
       }
     ],
   }
-  return globalConfig
-  }
+  return mockGlobalConfig
+}
 )

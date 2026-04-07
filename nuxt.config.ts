@@ -7,6 +7,9 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
+  dir: {
+    modules: './app/nuxt_modules',
+  },
   modules: [
     '@nuxt/eslint',
     '@nuxt/fonts',
@@ -14,13 +17,56 @@ export default defineNuxtConfig({
     '@nuxt/icon',
     '@nuxt/image',
     '@nuxt/scripts',
-    '@primevue/nuxt-module'
+    '@primevue/nuxt-module',
+    '@pinia/nuxt',
+    '@nuxtjs/i18n'
   ],
+  runtimeConfig: {
+    apiBaseUrl:
+      process.env.NUXT_PUBLIC_API_BASE_URL ||
+      'https://retts-webapp-api-dev.retts.cloud',
+    apiKeyName: process.env.NUXT_PUBLIC_API_KEY_NAME || 'Retts-Api-Key',
+    apiKeyValue: process.env.NUXT_PUBLIC_API_KEY_VALUE || '941faf76-hqao-6956-kcjv-dbd30350cb40',
+    cryptoAlgorithm: process.env.NUXT_PUBLIC_CRYPTO_ALGORITHM || 'aes-256-cbc',
+    cryptoSecretKey:
+      process.env.NUXT_PUBLIC_CRYPTO_SECRET_KEY ||
+      'ed023713af7c856366d37171b84f7be2',
+    cryptoCipherIv:
+      process.env.NUXT_PUBLIC_CRYPTO_CIPHER_IV || 'ed023713af7c8563',
+    //
+    public: {
+      appEnv: process.env.NUXT_PUBLIC_APP_ENV || 'development',
+      apiBaseUrl:
+        process.env.NUXT_PUBLIC_API_BASE_URL ||
+        'https://retts-webapp-api-dev.retts.cloud',
+      apiKeyName: process.env.NUXT_PUBLIC_API_KEY_NAME || 'Retts-Api-Key',
+      apiKeyValue: process.env.NUXT_PUBLIC_API_KEY_VALUE || '941faf76-hqao-6956-kcjv-dbd30350cb40',
+    }
+  },
+  //Nitro configuration
+  nitro: {
+    hooks: {
+      'rollup:before': nitro => {
+        nitro.options.moduleSideEffects.push('reflect-metadata');
+      },
+    },
+    rollupConfig: {
+      output: {
+        banner: 'import "reflect-metadata";',
+      },
+    },
+    // externals: {
+    //   inline: ['tslib']
+    // },
+  },
   // Vite
   vite: {
     plugins: [
       tailwindcss(),
     ],
+    server: {
+      allowedHosts: true
+    }
   },
   // PrimeVue module configuration
   primevue: {
@@ -75,5 +121,41 @@ export default defineNuxtConfig({
   css: [
     'primeicons/primeicons.css',
     './app/assets/theme/tailwind.css'
-  ]
+  ],
+  //Typescript configuration
+  typescript: {
+    tsConfig: {
+      compilerOptions: {
+        experimentalDecorators: true,
+        emitDecoratorMetadata: true,
+        verbatimModuleSyntax: false,
+        strictPropertyInitialization: false,
+        noUncheckedIndexedAccess: false,
+        noImplicitAny: true,
+        isolatedModules: true,
+        resolveJsonModule: true,
+        noEmit: true
+      }
+    }
+  },
+  // i18n configuration
+  i18n: {
+    locales: [
+      { code: 'en', iso: 'en-US', file: 'en.json', name: 'English' },
+      { code: 'id', iso: 'id-ID', file: 'id.json', name: 'Indonesia' },
+      // { code: 'fr', iso: 'fr-FR', file: 'fr.json', name: 'Français' },
+      // { code: 'de', iso: 'de-DE', file: 'de.json', name: 'Deutsch' },
+    ],
+    defaultLocale: 'en',
+    // URL strategy: /en/about, /fr/about, /about (default)
+    strategy: 'prefix_except_default',
+    // Detect user's browser language
+    detectBrowserLanguage: {
+      useCookie: true,
+      cookieKey: 'i18n_locale',
+      redirectOn: 'root', // Only redirect on homepage
+      alwaysRedirect: false,
+    },
+  },
+
 })

@@ -1,3 +1,65 @@
+<template>
+  <BaseLayout
+    id="features"
+    container="section"
+    padding="section"
+    class="text-center items-center flex flex-col"
+  >
+    <!-- Title Section -->
+    <div class="mt-20 mb-24 max-w-4xl mx-auto">
+      <div class="mb-2 font-bold text-4xl md:text-5xl">
+        {{ title }}
+      </div>
+      <span class="text-muted-color text-2xl">{{ subtitle }}</span>
+    </div>
+
+    <!-- Features Grid -->
+    <BaseLayout
+      layout="grid"
+      cols="3"
+      gap="lg"
+      class="max-w-7xl mx-auto"
+      :full-height="false"
+    >
+      <div
+        v-for="(feature, index) in features"
+        :key="index"
+        class="mt-6 lg:mt-0 pb-4"
+        :full-height="false"
+      >
+        <div
+          :style="`height: 240px; padding: 2px; border-radius: 10px; background: ${feature.gradient}`"
+        >
+          <BaseLayout
+            layout="flex"
+            direction="column"
+            padding="md"
+            class="bg-surface-0 dark:bg-surface-900 h-full rounded-lg"
+            :full-height="false"
+          >
+            <div
+              :class="[
+                'flex items-center justify-center mb-4',
+                feature.bgColor,
+              ]"
+              style="width: 3.5rem; height: 3.5rem; border-radius: 10px"
+            >
+              <i
+                :class="['pi pi-fw !text-2xl', feature.icon, feature.iconColor]"
+              />
+            </div>
+            <h5 class="mb-2 text-surface-900 dark:text-surface-0 text-left">
+              {{ feature.title }}
+            </h5>
+            <span class="text-surface-600 dark:text-surface-200 text-left">{{
+              feature.description
+            }}</span>
+          </BaseLayout>
+        </div>
+      </div>
+    </BaseLayout>
+  </BaseLayout>
+</template>
 <script setup lang="ts">
 interface Feature {
   icon: string;
@@ -75,51 +137,3 @@ const _props = withDefaults(defineProps<Props>(), {
   ],
 });
 </script>
-
-<template>
-  <div id="features" class="py-6 px-6 lg:px-20 mt-8 mx-0 lg:mx-20">
-    <div class="grid grid-cols-12 gap-4 justify-center">
-      <div class="col-span-12 text-center mt-20 mb-6">
-        <div
-          class="text-surface-900 dark:text-surface-0 font-normal mb-2 text-4xl"
-        >
-          {{ title }}
-        </div>
-        <span class="text-muted-color text-2xl">{{ subtitle }}</span>
-      </div>
-
-      <div
-        v-for="(feature, index) in features"
-        :key="index"
-        class="col-span-12 md:col-span-12 lg:col-span-4 p-0 lg:pr-8 lg:pb-8 mt-6 lg:mt-0"
-      >
-        <div
-          :style="`height: 160px; padding: 2px; border-radius: 10px; background: ${feature.gradient}`"
-        >
-          <div
-            class="p-4 bg-surface-0 dark:bg-surface-900 h-full"
-            style="border-radius: 8px"
-          >
-            <div
-              :class="[
-                'flex items-center justify-center mb-4',
-                feature.bgColor,
-              ]"
-              style="width: 3.5rem; height: 3.5rem; border-radius: 10px"
-            >
-              <i
-                :class="['pi pi-fw !text-2xl', feature.icon, feature.iconColor]"
-              />
-            </div>
-            <h5 class="mb-2 text-surface-900 dark:text-surface-0">
-              {{ feature.title }}
-            </h5>
-            <span class="text-surface-600 dark:text-surface-200">{{
-              feature.description
-            }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>

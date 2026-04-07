@@ -1,0 +1,178 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="CMS Database ERD" id="cms-database-erd">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Core Tables -->
+        <mxCell id="users" value="users&#xa;---&#xa;id: uuid (PK)&#xa;email: string&#xa;passwordHash: string&#xa;name: string&#xa;role: enum&#xa;avatarUrl: string&#xa;isActive: boolean&#xa;createdAt: timestamp&#xa;updatedAt: timestamp" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="200" height="200" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="languages" value="languages&#xa;---&#xa;id: string (PK)&#xa;name: string&#xa;nativeName: string&#xa;iconName: string&#xa;isDefault: boolean&#xa;isActive: boolean&#xa;sortOrder: int&#xa;createdAt: timestamp" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="280" y="40" width="200" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- Global Settings -->
+        <mxCell id="global_configs" value="global_configs&#xa;---&#xa;id: uuid (PK)&#xa;key: string&#xa;category: string&#xa;value: jsonb&#xa;description: text&#xa;isPublic: boolean&#xa;createdAt: timestamp&#xa;updatedAt: timestamp" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="40" y="280" width="200" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- Menu Tables -->
+        <mxCell id="menus" value="menus&#xa;---&#xa;id: uuid (PK)&#xa;key: string&#xa;name: string&#xa;location: string&#xa;isActive: boolean&#xa;createdAt: timestamp&#xa;updatedAt: timestamp" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="280" y="280" width="200" height="160" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="menu_items" value="menu_items&#xa;---&#xa;id: uuid (PK)&#xa;menuId: uuid (FK)&#xa;parentId: uuid (FK)&#xa;title: string&#xa;url: string&#xa;pageId: uuid (FK)&#xa;target: string&#xa;icon: string&#xa;sortOrder: int&#xa;isActive: boolean&#xa;createdAt: timestamp&#xa;updatedAt: timestamp" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="520" y="280" width="220" height="240" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="menu_item_translations" value="menu_item_translations&#xa;---&#xa;id: uuid (PK)&#xa;menuItemId: uuid (FK)&#xa;languageId: string (FK)&#xa;title: string&#xa;description: text" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="780" y="280" width="220" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Template Tables -->
+        <mxCell id="templates" value="templates&#xa;---&#xa;id: uuid (PK)&#xa;name: string&#xa;slug: string&#xa;description: text&#xa;category: string&#xa;previewImage: string&#xa;isActive: boolean&#xa;createdById: uuid (FK)&#xa;createdAt: timestamp&#xa;updatedAt: timestamp" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="500" width="220" height="220" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="template_blocks" value="template_blocks&#xa;---&#xa;id: uuid (PK)&#xa;templateId: uuid (FK)&#xa;name: string&#xa;type: string&#xa;component: string&#xa;props: jsonb&#xa;sortOrder: int&#xa;createdAt: timestamp" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="300" y="500" width="200" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- Page Tables -->
+        <mxCell id="pages" value="pages&#xa;---&#xa;id: uuid (PK)&#xa;slug: string&#xa;templateId: uuid (FK)&#xa;title: string&#xa;status: enum&#xa;pageType: enum&#xa;pageCategory: string&#xa;collectionType: string&#xa;collectionItemId: uuid&#xa;metaTitle: string&#xa;metaDescription: text&#xa;metaKeywords: text&#xa;ogImage: string&#xa;canonicalUrl: string&#xa;noindex: boolean&#xa;publishedAt: timestamp&#xa;authorId: uuid (FK)&#xa;viewCount: int&#xa;createdAt: timestamp&#xa;updatedAt: timestamp" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="560" y="500" width="220" height="420" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="page_blocks" value="page_blocks&#xa;---&#xa;id: uuid (PK)&#xa;pageId: uuid (FK)&#xa;templateBlockId: uuid (FK)&#xa;name: string&#xa;type: string&#xa;component: string&#xa;props: jsonb&#xa;sortOrder: int&#xa;createdAt: timestamp" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="820" y="500" width="200" height="200" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="page_translations" value="page_translations&#xa;---&#xa;id: uuid (PK)&#xa;pageId: uuid (FK)&#xa;languageId: string (FK)&#xa;title: string&#xa;metaTitle: string&#xa;metaDescription: text&#xa;metaKeywords: text" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="820" y="740" width="200" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- Collection Tables -->
+        <mxCell id="collection_configs" value="collection_configs&#xa;---&#xa;id: uuid (PK)&#xa;slug: string&#xa;name: string&#xa;description: text&#xa;icon: string&#xa;listTemplateId: uuid (FK)&#xa;detailTemplateId: uuid (FK)&#xa;apiEndpoint: string&#xa;fieldMapping: jsonb&#xa;supportsCategories: boolean&#xa;supportsTags: boolean&#xa;supportsComments: boolean&#xa;isActive: boolean&#xa;createdAt: timestamp&#xa;updatedAt: timestamp" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="40" y="760" width="220" height="300" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="blog_posts" value="blog_posts&#xa;---&#xa;id: uuid (PK)&#xa;slug: string&#xa;title: string&#xa;excerpt: text&#xa;content: text&#xa;featuredImage: string&#xa;authorId: uuid (FK)&#xa;status: enum&#xa;publishedAt: timestamp&#xa;metaTitle: string&#xa;metaDescription: text&#xa;viewCount: int&#xa;readTime: int&#xa;createdAt: timestamp&#xa;updatedAt: timestamp" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="300" y="760" width="200" height="320" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="blog_post_translations" value="blog_post_translations&#xa;---&#xa;id: uuid (PK)&#xa;blogPostId: uuid (FK)&#xa;languageId: string (FK)&#xa;title: string&#xa;excerpt: text&#xa;content: text&#xa;metaTitle: string&#xa;metaDescription: text" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="540" y="1000" width="200" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="blog_categories" value="blog_categories&#xa;---&#xa;id: uuid (PK)&#xa;name: string&#xa;slug: string&#xa;description: text&#xa;createdAt: timestamp" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="300" y="1120" width="200" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="blog_tags" value="blog_tags&#xa;---&#xa;id: uuid (PK)&#xa;name: string&#xa;slug: string&#xa;createdAt: timestamp" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="540" y="1220" width="200" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Media Tables -->
+        <mxCell id="media_files" value="media_files&#xa;---&#xa;id: uuid (PK)&#xa;filename: string&#xa;originalFilename: string&#xa;mimeType: string&#xa;fileSize: bigint&#xa;width: int&#xa;height: int&#xa;storagePath: text&#xa;publicUrl: text&#xa;altText: string&#xa;caption: text&#xa;folder: string&#xa;uploadedById: uuid (FK)&#xa;usageCount: int&#xa;createdAt: timestamp&#xa;updatedAt: timestamp" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="800" y="1000" width="220" height="320" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="media_translations" value="media_translations&#xa;---&#xa;id: uuid (PK)&#xa;mediaFileId: uuid (FK)&#xa;languageId: string (FK)&#xa;altText: string&#xa;caption: text" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="1000" width="200" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Relationships -->
+        <!-- Users relationships -->
+        <mxCell id="edge1" edge="1" parent="1" source="users" target="pages">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2" edge="1" parent="1" source="users" target="blog_posts">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" edge="1" parent="1" source="users" target="media_files">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4" edge="1" parent="1" source="users" target="templates">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Languages relationships -->
+        <mxCell id="edge5" edge="1" parent="1" source="languages" target="menu_item_translations">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge6" edge="1" parent="1" source="languages" target="page_translations">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge7" edge="1" parent="1" source="languages" target="blog_post_translations">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge8" edge="1" parent="1" source="languages" target="media_translations">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Menu relationships -->
+        <mxCell id="edge9" edge="1" parent="1" source="menus" target="menu_items">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge10" edge="1" parent="1" source="menu_items" target="menu_item_translations">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge11" edge="1" parent="1" source="menu_items" target="pages" style="dashed=1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Template relationships -->
+        <mxCell id="edge12" edge="1" parent="1" source="templates" target="template_blocks">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge13" edge="1" parent="1" source="templates" target="pages" style="dashed=1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge14" edge="1" parent="1" source="templates" target="collection_configs" style="dashed=1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Page relationships -->
+        <mxCell id="edge15" edge="1" parent="1" source="pages" target="page_blocks">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge16" edge="1" parent="1" source="pages" target="page_translations">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge17" edge="1" parent="1" source="template_blocks" target="page_blocks" style="dashed=1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Collection relationships -->
+        <mxCell id="edge18" edge="1" parent="1" source="blog_posts" target="blog_post_translations">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge19" edge="1" parent="1" source="blog_posts" target="blog_categories" style="dashed=1;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint as="offset" x="0" y="-10" />
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge20" edge="1" parent="1" source="blog_posts" target="blog_tags" style="dashed=1;strokeWidth=2">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint as="offset" x="0" y="-10" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Media relationships -->
+        <mxCell id="edge21" edge="1" parent="1" source="media_files" target="media_translations">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Legend -->
+        <mxCell id="legend" value="LEGEND&#xa;---&#xa;Solid line = One-to-Many&#xa;Dashed line = Optional FK&#xa;Thick dashed = Many-to-Many&#xa;&#xa;Colors:&#xa;Blue = Core&#xa;Yellow = Global Settings&#xa;Green = Templates&#xa;Purple = Pages&#xa;Red = Collections&#xa;Orange = Media" style="text;html=1;strokeColor=#666666;fillColor=#f5f5f5;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="40" width="200" height="200" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

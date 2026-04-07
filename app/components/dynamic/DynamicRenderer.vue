@@ -1,33 +1,36 @@
 <template>
-  <div class="dynamic-page-renderer">
+  <div
+    class="dynamic-page-renderer"
+    :class="pageTypeClass"
+    :data-page-type="pageConfig.meta.type"
+  >
+    <!-- Main content blocks -->
     <DynamicBlockRenderer
       v-for="(block, index) in pageConfig.blocks"
       :key="`${block.name}-${index}`"
       :block-config="block"
+      :page-meta="pageConfig.meta"
     />
   </div>
 </template>
 
 <script setup lang="ts">
 import type { PageConfig } from '#shared/types';
+import { getPageTypeClasses, buildSeoHead } from '~/utils/helpers/SeoHelpers';
 
 interface Props {
   pageConfig: PageConfig;
 }
 
 const props = defineProps<Props>();
+// console.log('Rendering page with config:', props.pageConfig);
 
-// Set SEO meta tags if provided
+// Computed properties based on page type
+const pageTypeClass = computed(() => getPageTypeClasses(props.pageConfig));
+
+// Enhanced SEO meta tags with structured data
 if (props.pageConfig.seoMeta) {
-  useHead({
-    title: props.pageConfig.seoMeta.title,
-    meta: [
-      { name: 'description', content: props.pageConfig.seoMeta.description },
-      { property: 'og:title', content: props.pageConfig.seoMeta.title },
-      { property: 'og:description', content: props.pageConfig.seoMeta.description },
-      { property: 'og:image', content: props.pageConfig.seoMeta.ogImage },
-    ],
-  });
+  // useHead(buildSeoHead(props.pageConfig));
 }
 </script>
 
@@ -35,6 +38,6 @@ if (props.pageConfig.seoMeta) {
 .dynamic-page-renderer {
   display: flex;
   flex-direction: column;
-  gap: 3rem;
+  min-height: 100vh;
 }
 </style>

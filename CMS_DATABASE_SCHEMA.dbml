@@ -1,0 +1,484 @@
+// ============================================
+// DATABASE SCHEMA FOR DYNAMIC CMS SYSTEM
+// ============================================
+// Import this file to https://dbdiagram.io
+// 
+// 🔑 KEY FEATURES:
+// - Dynamic Collections: No need to create new entities for each collection type
+// - All collection items (blog, products, portfolio, etc) use ONE generic table
+// - Custom fields stored in JSONB for maximum flexibility
+// - Multi-language support with translation tables
+// - Hierarchical menu system with self-referencing
+// - SEO optimized with meta fields
+// - Media library with translations
+//
+// 📊 TABLE COUNT: 21 tables (vs 30+ in traditional approach)
+// ⚡ PERFORMANCE: GIN indexes on JSONB fields
+// 🌐 I18N: Full multi-language support
+//
+// ============================================
+
+// ============================================
+// CORE TABLES
+// ============================================
+
+Table users {
+  id uuid [pk]
+  email varchar [unique, not null]
+  password_hash varchar [not null]
+  name varchar [not null]
+  role varchar [not null, note: 'admin, editor, author, user']
+  avatar_url varchar
+  is_active boolean [default: true]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    email
+    role
+    is_active
+  }
+}
+
+Table languages {
+  id varchar(10) [pk, note: 'ISO code: en, id, fr, de']
+  name varchar [not null, note: 'English, Indonesian']
+  native_name varchar [note: 'English, Bahasa Indonesia']
+  icon_name varchar [note: 'flag-icon-us, fi fi-id']
+  is_default boolean [default: false]
+  is_active boolean [default: true]
+  sort_order int [default: 0]
+  created_at timestamp [default: `now()`]
+  
+  indexes {
+    is_default
+    is_active
+  }
+}
+
+// ============================================
+// GLOBAL SETTINGS
+// ============================================
+
+Table global_configs {
+  id uuid [pk]
+  key varchar [unique, not null, note: 'theme, seo_defaults, footer_config']
+  category varchar [note: 'theme, seo, layout, features']
+  value jsonb [not null, note: 'Flexible settings storage']
+  description text
+  is_public boolean [default: true, note: 'Exposed to public API']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    key
+    category
+  }
+}
+
+// ============================================
+// MENU SYSTEM
+// ============================================
+
+Table menus {
+  id uuid [pk]
+  key varchar [unique, not null, note: 'header, footer, sidebar, mobile']
+  name varchar [not null, note: 'Header Menu, Footer Menu']
+  location varchar [not null, note: 'header, footer, sidebar']
+  is_active boolean [default: true]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    key
+    location
+  }
+}
+
+Table menu_items {
+  id uuid [pk]
+  menu_id uuid [not null, ref: > menus.id]
+  parent_id uuid [ref: > menu_items.id, note: 'Self-reference for nested menu']
+  title varchar [not null]
+  url varchar [note: 'External URL or route path']
+  page_id uuid [ref: > pages.id, note: 'Link to internal page']
+  target varchar [default: '_self', note: '_self, _blank']
+  icon varchar [note: 'Icon class name']
+  sort_order int [default: 0]
+  is_active boolean [default: true]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    menu_id
+    parent_id
+    sort_order
+  }
+}
+
+Table menu_item_translations {
+  id uuid [pk]
+  menu_item_id uuid [not null, ref: > menu_items.id]
+  language_id varchar(10) [not null, ref: > languages.id]
+  title varchar [not null]
+  description text
+  
+  indexes {
+    (menu_item_id, language_id) [unique]
+  }
+}
+
+// ============================================
+// TEMPLATES
+// ============================================
+
+Table templates {
+  id uuid [pk]
+  name varchar [not null]
+  slug varchar [unique, not null]
+  description text
+  category varchar [note: 'page, blog, product, landing']
+  preview_image varchar
+  is_active boolean [default: true]
+  created_by uuid [ref: > users.id]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    slug
+    category
+    is_active
+  }
+}
+
+Table template_blocks {
+  id uuid [pk]
+  template_id uuid [not null, ref: > templates.id]
+  name varchar [not null, note: 'hero-section, content-area']
+  type varchar [note: 'predefined, custom']
+  component varchar [not null, note: 'HeroWidget, ContentBlock']
+  props jsonb [note: 'Component props with {{item.field}} variables']
+  sort_order int [default: 0]
+  created_at timestamp [default: `now()`]
+  
+  indexes {
+    template_id
+    sort_order
+  }
+}
+
+// ============================================
+// PAGES
+// ============================================
+
+Table pages {
+  id uuid [pk]
+  slug varchar [unique, not null, note: '/about, /blog/my-post']
+  template_id uuid [ref: > templates.id]
+  title varchar [not null]
+  status varchar [not null, default: 'draft', note: 'draft, published, archived']
+  page_type varchar [note: 'static, collection-list, collection-detail, landing, custom']
+  page_category varchar [note: 'content, commerce, portfolio']
+  collection_type varchar [note: 'blog, product, project']
+  collection_item_id uuid [note: 'Reference to collection_items.id']
+  meta_title varchar
+  meta_description text
+  meta_keywords text
+  og_image text
+  canonical_url text
+  noindex boolean [default: false]
+  published_at timestamp
+  author_id uuid [ref: > users.id]
+  view_count int [default: 0]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    slug
+    status
+    page_type
+    published_at
+    author_id
+  }
+}
+
+Table page_blocks {
+  id uuid [pk]
+  page_id uuid [not null, ref: > pages.id]
+  template_block_id uuid [ref: > template_blocks.id, note: 'Optional reference']
+  name varchar [not null]
+  type varchar
+  component varchar [not null]
+  props jsonb [note: 'Override or custom props']
+  sort_order int [default: 0]
+  created_at timestamp [default: `now()`]
+  
+  indexes {
+    page_id
+    sort_order
+  }
+}
+
+Table page_translations {
+  id uuid [pk]
+  page_id uuid [not null, ref: > pages.id]
+  language_id varchar(10) [not null, ref: > languages.id]
+  title varchar [not null]
+  meta_title varchar
+  meta_description text
+  meta_keywords text
+  
+  indexes {
+    (page_id, language_id) [unique]
+  }
+}
+
+// ============================================
+// DYNAMIC COLLECTIONS (GENERIC)
+// ============================================
+
+Table collection_configs {
+  id uuid [pk]
+  slug varchar [unique, not null, note: 'blog, products, projects, team-members']
+  name varchar [not null, note: 'Blog Posts, Products, Portfolio']
+  description text
+  icon varchar [note: 'Icon for admin UI']
+  list_template_id uuid [ref: > templates.id, note: 'Template for list view']
+  detail_template_id uuid [ref: > templates.id, note: 'Template for detail view']
+  supports_categories boolean [default: true]
+  supports_tags boolean [default: true]
+  supports_comments boolean [default: false]
+  supports_rating boolean [default: false]
+  supports_multi_language boolean [default: true]
+  supports_seo boolean [default: true]
+  is_active boolean [default: true]
+  default_page_size int [default: 10]
+  default_sort_field varchar [default: 'createdAt']
+  default_sort_order varchar [default: 'DESC']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    slug
+    is_active
+  }
+  
+  Note: 'Generic collection config - no need to create new entity for each type'
+}
+
+Table collection_fields {
+  id uuid [pk]
+  collection_id uuid [not null, ref: > collection_configs.id]
+  name varchar [not null, note: 'title, content, price, specifications']
+  label varchar [not null, note: 'Title, Content, Price, Product Specs']
+  type varchar [not null, note: 'text, textarea, rich_text, number, boolean, date, datetime, email, url, image, file, select, multi_select, json, relation']
+  description text
+  is_required boolean [default: false]
+  is_unique boolean [default: false]
+  is_translatable boolean [default: true, note: 'Field needs translation']
+  show_in_list boolean [default: true, note: 'Show in admin list view']
+  show_in_detail boolean [default: true, note: 'Show in detail view']
+  is_searchable boolean [default: true, note: 'Include in search query']
+  is_filterable boolean [default: false, note: 'Can be used as filter']
+  default_value varchar
+  validation_rules jsonb [note: 'min, max, pattern, etc']
+  options jsonb [note: 'For select/multi-select: choices array']
+  sort_order int [default: 0]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    collection_id
+    sort_order
+  }
+  
+  Note: 'Field definitions for each collection type - stored as metadata'
+}
+
+Table collection_items {
+  id uuid [pk]
+  collection_id uuid [not null, ref: > collection_configs.id]
+  slug varchar [unique, not null, note: 'Auto-generated or manual']
+  title varchar [not null, note: 'Main title for all collections']
+  data jsonb [not null, note: '🔑 ALL CUSTOM FIELDS stored here - flexible schema']
+  status varchar [not null, default: 'draft', note: 'draft, published, archived, scheduled']
+  author_id uuid [ref: > users.id]
+  published_at timestamp
+  scheduled_at timestamp
+  meta_title varchar
+  meta_description text
+  meta_keywords text
+  og_image varchar
+  view_count int [default: 0]
+  like_count int [default: 0]
+  rating decimal(3,2) [note: 'Average rating if supports_rating = true']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    collection_id
+    slug
+    status
+    author_id
+    published_at
+    created_at
+    data [type: gin, note: 'GIN index for JSONB queries']
+  }
+  
+  Note: 'Generic item entity - one table for ALL collection types (blog, products, etc)'
+}
+
+Table collection_item_translations {
+  id uuid [pk]
+  item_id uuid [not null, ref: > collection_items.id]
+  language_id varchar(10) [not null, ref: > languages.id]
+  title varchar [not null]
+  data jsonb [not null, note: 'Translated data for translatable fields']
+  meta_title varchar
+  meta_description text
+  meta_keywords text
+  
+  indexes {
+    (item_id, language_id) [unique]
+  }
+  
+  Note: 'Translations for collection items'
+}
+
+// ============================================
+// CATEGORIES & TAGS (GENERIC)
+// ============================================
+
+Table categories {
+  id uuid [pk]
+  collection_id uuid [ref: > collection_configs.id, note: 'null = global category']
+  name varchar [not null]
+  slug varchar [unique, not null]
+  description text
+  icon varchar
+  color varchar [note: 'Hex color code']
+  sort_order int [default: 0]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    collection_id
+    slug
+  }
+  
+  Note: 'Generic categories for all collections or collection-specific'
+}
+
+Table tags {
+  id uuid [pk]
+  collection_id uuid [ref: > collection_configs.id, note: 'null = global tag']
+  name varchar [not null]
+  slug varchar [unique, not null]
+  color varchar [note: 'Hex color code']
+  created_at timestamp [default: `now()`]
+  
+  indexes {
+    collection_id
+    slug
+  }
+  
+  Note: 'Generic tags for all collections or collection-specific'
+}
+
+// Many-to-Many: Collection Items <-> Categories
+Table collection_item_categories {
+  item_id uuid [ref: > collection_items.id]
+  category_id uuid [ref: > categories.id]
+  
+  indexes {
+    (item_id, category_id) [pk]
+  }
+}
+
+// Many-to-Many: Collection Items <-> Tags
+Table collection_item_tags {
+  item_id uuid [ref: > collection_items.id]
+  tag_id uuid [ref: > tags.id]
+  
+  indexes {
+    (item_id, tag_id) [pk]
+  }
+}
+
+// ============================================
+// MEDIA LIBRARY
+// ============================================
+
+Table media_files {
+  id uuid [pk]
+  filename varchar [not null]
+  original_filename varchar [not null]
+  mime_type varchar [not null]
+  file_size bigint [not null, note: 'Size in bytes']
+  width int [note: 'For images']
+  height int [note: 'For images']
+  storage_path text [not null, note: 'S3 or local path']
+  public_url text [not null]
+  alt_text varchar
+  caption text
+  folder varchar [note: '/images/blog, /images/products']
+  uploaded_by uuid [not null, ref: > users.id]
+  usage_count int [default: 0, note: 'Track usage across system']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    folder
+    uploaded_by
+    mime_type
+  }
+}
+
+Table media_translations {
+  id uuid [pk]
+  media_file_id uuid [not null, ref: > media_files.id]
+  language_id varchar(10) [not null, ref: > languages.id]
+  alt_text varchar
+  caption text
+  
+  indexes {
+    (media_file_id, language_id) [unique]
+  }
+}
+
+// ============================================
+// RELATIONSHIPS SUMMARY
+// ============================================
+
+// Core
+// users -> pages (author)
+// users -> collection_items (author)
+// users -> media_files (uploader)
+// users -> templates (creator)
+// languages -> all translation tables
+
+// Menus
+// menus -> menu_items (1:N)
+// menu_items -> menu_items (self-reference for nesting)
+// menu_items -> pages (optional internal link)
+// menu_items -> menu_item_translations (1:N)
+
+// Templates
+// templates -> template_blocks (1:N)
+// templates -> pages (1:N)
+// templates -> collection_configs (for list/detail templates)
+
+// Pages
+// pages -> page_blocks (1:N)
+// pages -> page_translations (1:N)
+// template_blocks -> page_blocks (optional reference)
+
+// Collections (DYNAMIC - KEY FEATURE)
+// collection_configs -> collection_fields (1:N) - field definitions
+// collection_configs -> collection_items (1:N) - actual data
+// collection_items -> collection_item_translations (1:N)
+// collection_items <-> categories (N:M)
+// collection_items <-> tags (N:M)
+
+// Media
+// media_files -> media_translations (1:N)

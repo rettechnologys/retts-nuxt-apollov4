@@ -1,0 +1,469 @@
+import type { HttpClient } from '@/modules/data/internal/data-source/http-client';
+import type { FetchError, FetchOptions } from 'ofetch';
+import { $fetch } from 'ofetch';
+import 'reflect-metadata';
+// import LoginForm from '@/components/login/LoginForm.vue';
+import {
+  useConfirmationService,
+  useDynamicDialogService,
+} from '@/composables/prime';
+
+// Define the structure of a retry queue item
+interface RetryQueueItem {
+  resolve: (value?: any) => void;
+  reject: (error?: any) => void;
+  config: FetchOptions & { path: string };
+}
+
+export default defineNuxtPlugin({
+  name: 'ofetch-plugins',
+  parallel: true,
+  enforce: 'pre',
+  async setup(nuxtApp) {
+    // Create a list to hold the request queue
+    const refreshAndRetryQueue: RetryQueueItem[] = [];
+
+    // Flag to prevent multiple token refresh requests
+    let isRefreshing = false;
+
+    // Helper function to normalize headers to a plain object
+    function normalizeHeaders(headers: any): Record<string, string> {
+      if (!headers) return {};
+
+      // If it's already a plain object
+      if (typeof headers === 'object' && !headers.forEach && !headers.entries) {
+        const normalized: Record<string, string> = {};
+        for (const [key, value] of Object.entries(headers)) {
+          normalized[key] = String(value);
+        }
+        return normalized;
+      }
+
+      // If it's a Headers object or similar with forEach
+      if (headers.forEach) {
+        const normalized: Record<string, string> = {};
+        headers.forEach((value: any, key: string) => {
+          normalized[key] = String(value);
+        });
+        return normalized;
+      }
+
+      // If it's a Headers object with entries
+      if (headers.entries) {
+        const normalized: Record<string, string> = {};
+        for (const [key, value] of headers.entries()) {
+          normalized[key] = String(value);
+        }
+        return normalized;
+      }
+
+      // Fallback for any other type
+      return {};
+    }
+
+    // Helper function to log headers safely
+    function logHeaders(headers: any, label: string) {
+      const normalized = normalizeHeaders(headers);
+      console.log(`[Fetch] ${label}:`, normalized);
+
+      // Log each header for debugging
+      for (const [key, value] of Object.entries(normalized)) {
+        console.log(`  ${key}: ${value}`);
+      }
+    }
+
+    function setupInterceptorsTo<T>(httpClient: HttpClient<T>) {
+      const { $config } = useNuxtApp();
+
+      // Get configuration values
+      const BASE_URL = $config.public.apiBaseUrl;
+      const API_KEY_NAME = $config.public.apiKeyName;
+      const API_KEY_VALUE = $config.public.apiKeyValue;
+      const REFRESH_TOKEN_ENDPOINT = 'auth/refresh-token'; // From APP config
+      const REFRESH_TOKEN_MAX_RETRY = 3; // From APP config
+
+      console.log(
+        BASE_URL,
+      )
+
+      // Request Interceptor
+      httpClient.addRequestInterceptor(async (config: FetchOptions) => {
+        const headers: any = config.headers || {};
+
+        console.info(
+          '[addRequestInterceptor] onRequest.headers:',
+          headers,
+          config.baseURL
+        );
+
+        // Add API key
+        if (API_KEY_VALUE) {
+          headers[API_KEY_NAME] = API_KEY_VALUE;
+        }
+
+        // Add authentication token if required
+        if (headers['Require-Token'] !== false) {
+          // const { accessToken } = await getAppADState();
+
+          // console.log(
+          //   '[addRequestInterceptor] onRequest.accessToken:',
+          //   accessToken,
+          //   new Date().getTime()
+          // );
+
+          // if (accessToken) {
+          //   headers['Authorization'] = `Bearer ${accessToken}`;
+          // }
+          const cookie = useRequestHeader('[cookie]');
+          console.log('[addRequestInterceptor] onRequest.cookie:', cookie);
+          if (cookie) {
+            headers['Cookie'] = cookie;
+          }
+          config.credentials = 'include';
+        }
+
+        // Add language header
+        if (!headers['Accept-Language']) {
+          if (import.meta.client) {
+            // const { currentLang } = useLang();
+            headers['Accept-Language'] = 'en'; //currentLang.value;
+          }
+        }
+
+        // Set default Require-Token if not specified
+        if (headers['Require-Token'] === undefined) {
+          headers['Require-Token'] = true;
+        }
+
+        config.headers = headers;
+        console.log(
+          '[addRequestInterceptor] onRequest.config:',
+          config.headers
+        );
+
+        return config;
+      });
+
+      // Response Interceptor
+      httpClient.addResponseInterceptor(async (response: any) => {
+        // console.info('[addResponseInterceptor] onResponse:', response);
+        return response;
+      });
+
+      // Error Interceptor - This is where the complex logic goes
+      httpClient.addErrorInterceptor(async (error: FetchError) => {
+        console.error('[addErrorInterceptor] onResponseError:', error);
+
+        const originalConfig = error.options as any; // ofetch doesn't have config like axios
+        const headers = normalizeHeaders(originalConfig?.headers);
+        logHeaders(headers, 'onResponseError.headers');
+        console.log(
+          '[addErrorInterceptor] onResponseError.originalConfig:',
+          originalConfig
+        );
+        console.log(
+          '[addErrorInterceptor] onResponseError.headers[require-token]:',
+          headers
+        );
+        if (!headers) {
+          console.info(
+            '[addErrorInterceptor] onResponseError.ForceLogout:',
+            '1'
+          );
+          if (import.meta.client) {
+            forceLogout();
+          }
+          throw error;
+        }
+
+        // Handle 401 errors with token refresh
+        if (error.status === 401 && headers['require-token']) {
+          console.info(
+            '[addErrorInterceptor] onResponseError.Require-Token:',
+            headers['require-token'],
+            error.data?.meta?.path,
+            refreshAndRetryQueue.length,
+            isRefreshing
+          );
+
+          if (headers) {
+            console.info(
+              '[addErrorInterceptor] onResponseError.Retry-Count:',
+              headers['retry-count']
+            );
+
+            if (parseInt(headers['retry-count']!) >= REFRESH_TOKEN_MAX_RETRY) {
+              console.info(
+                '[addErrorInterceptor] onResponseError.ForceLogout:',
+                '2'
+              );
+              console.info(
+                '[Fetch] onResponseError.Retry-Count-Max:',
+                REFRESH_TOKEN_MAX_RETRY
+              );
+              if (import.meta.client) {
+                // Force logout if retry count exceeds max
+                forceLogout();
+              }
+
+              throw error;
+            }
+
+            if (!isRefreshing) {
+              isRefreshing = true;
+
+              try {
+                console.info(
+                  '[addErrorInterceptor] onResponseError.getRefreshToken'
+                );
+                const resRefreshToken = await getRefreshToken();
+                console.info(
+                  '[addErrorInterceptor] onResponseError.resRefreshToken:',
+                  resRefreshToken
+                );
+
+                if (resRefreshToken.success) {
+                  const newData = resRefreshToken.data;
+                  // await setAppADState(newData);
+                  console.info(
+                    '[addErrorInterceptor] onResponseError.setNewAppADState:',
+                    newData
+                  );
+
+                  // Set retry count
+                  let retryCount = 1;
+                  if (headers['Retry-Count']) {
+                    retryCount += parseInt(headers['retry-count']!) as number;
+                  }
+
+                  const newHeaders = {
+                    ...headers,
+                    'Require-Token': true,
+                    'Retry-Count': retryCount,
+                  };
+
+                  console.info(
+                    '[addErrorInterceptor:Fetch] onResponseError.Retry-Count:',
+                    retryCount
+                  );
+
+                  // Retry all requests in the queue with the new token
+                  console.info(
+                    '[addErrorInterceptor:Fetch] onResponseError.refreshAndRetryQueue:',
+                    refreshAndRetryQueue.length
+                  );
+
+                  refreshAndRetryQueue.forEach(
+                    ({ config, resolve, reject }) => {
+                      config.headers = {
+                        ...config.headers,
+                        'Require-Token': 'true',
+                        'Retry-Count': retryCount.toString(),
+                      };
+                      console.log(
+                        '[addErrorInterceptor] onResponseError.Retrying request:',
+                        config.path,
+                        config.headers
+                      );
+
+                      $fetch(config.path, config)
+                        .then(response => resolve(response))
+                        .catch(err => reject(err));
+                    }
+                  );
+
+                  // Clear the queue
+                  refreshAndRetryQueue.length = 0;
+
+                  // Retry the original request
+                  const retryConfig = {
+                    ...originalConfig,
+                    headers: newHeaders,
+                  };
+
+                  console.log('[addErrorInterceptor] onResponseError.Retrying original request:', originalConfig.path, retryConfig.headers);
+
+                  return $fetch(
+                    originalConfig.path || error.request,
+                    retryConfig
+                  );
+                } else {
+                  if (import.meta.client) {
+                    // Force logout if retry count exceeds max
+                    forceLogout();
+                  }
+                  throw error;
+                }
+              } catch (e) {
+                console.error(
+                  '[addErrorInterceptor] onResponseError.getRefreshToken.catch:',
+                  e
+                );
+                throw e;
+              } finally {
+                isRefreshing = false;
+              }
+            } else {
+              // Add the original request to the queue
+              console.log('[addErrorInterceptor] refreshAndRetryQueue', refreshAndRetryQueue);
+              return new Promise((resolve, reject) => {
+                refreshAndRetryQueue.push({
+                  config: {
+                    ...originalConfig,
+                    path: originalConfig.path || error.request,
+                  },
+                  resolve,
+                  reject,
+                });
+              });
+            }
+          } else {
+            console.info('[addErrorInterceptor] onResponseError.ForceLogout:', '3');
+            if (import.meta.client) {
+              // Force logout if no original config is available
+              forceLogout();
+            }
+          }
+        } else {
+          console.info('[addErrorInterceptor] onResponseError.Beside401:', error.status);
+        }
+        throw error;
+      });
+
+      console.log('✅ oFetch plugins setup complete');
+    }
+    //#region Helper Methods
+    const getAppADState = async () => {
+      const appADStore = useAppADStore();
+      const appADState = appADStore.getState;
+      console.info('[Interceptor] getAppADState', appADState);
+      return appADState;
+    };
+
+    const setAppADState = async (newAppADState: any) => {
+      const appADStore = useAppADStore();
+      appADStore.setState(newAppADState);
+
+      console.log('[Interceptor] setAppADState:', newAppADState);
+    };
+
+    const forceLogout = () => {
+      console.info('[addErrorInterceptor] forceLogout called');
+      const _confirmation = useNuxtApp().$primevue_confirmation;
+      const _dialog = useNuxtApp().$primevue_dialog;
+      console.log('[addErrorInterceptor] forceLogout:_confirmation', _confirmation);
+      console.log('[addErrorInterceptor] forceLogout:_dialog', _dialog);
+      const confirmation = useConfirmationService();
+      const dialog = useDynamicDialogService();
+      console.log('[addErrorInterceptor] forceLogout:confirmation', confirmation);
+      console.log('[addErrorInterceptor] forceLogout:dialog', dialog);
+      const { $i18n } = useNuxtApp();
+
+      if (import.meta.client) {
+        const appADStore = useAppADStore();
+
+        appADStore.logout();
+        appADStore.resetState();
+        console.log('[addErrorInterceptor] appADStore.logout');
+        console.log('[addErrorInterceptor] appADStore.resetState');
+      }
+
+      console.log('[addErrorInterceptor] confirmation', confirmation);
+      // Show confirmation dialog using PrimeVue
+      // confirmation.require({
+      //   header: 'Confirm',
+      //   message: 'Your session has expired. Please log in again.',
+      //   icon: 'pi pi-exclamation-triangle',
+      //   rejectLabel: 'Cancel',
+      //   acceptLabel: 'Yes',
+      //   rejectClass: 'p-button-secondary p-button-outlined',
+      //   acceptClass: 'p-button-danger',
+      //   accept: () => {
+      //     dialog.open(LoginForm, {
+      //       props: {
+      //         header: 'Login',
+      //         style: {
+      //           width: '30vw',
+      //         },
+      //         breakpoints: {
+      //           [EBreakPoint.PhoneSM + 'px']: EBreakPointVW['75vw'],
+      //           [EBreakPoint.TabletMD + 'px']: EBreakPointVW['75vw'],
+      //           [EBreakPoint.NotebookLG + 'px']: EBreakPointVW['75vw'],
+      //         },
+      //         modal: true,
+      //       },
+      //       onClose: () => {
+      //         window.location.reload();
+      //       },
+      //       data: {
+      //         hideForgot: true,
+      //       },
+      //     });
+      //   },
+      //   reject: () => {
+      //     window.location.reload();
+      //     // setTimeout(function () {
+      //     //   window.location.reload();
+      //     // }, 10000);
+      //   },
+      //   onHide: () => {
+      //     window.location.reload();
+      //   },
+      // });
+
+      console.log('[addErrorInterceptor] forceLogout');
+    };
+
+    const getRefreshToken = async (token?: string) => {
+      const { $config } = useNuxtApp();
+
+      const BASE_URL = $config.public.apiBaseUrl;
+      const API_KEY_NAME = $config.public.apiKeyName || 'Retts-Api-Key';
+      const API_KEY_VALUE = $config.public.apiKeyValue || '941faf76-hqao-6956-kcjv-dbd30350cb40';
+      const REFRESH_TOKEN_ENDPOINT = 'api/auth/refresh-token';
+      console.log(`[Interceptor:getRefreshToken] BASE_URL: ${BASE_URL}, REFRESH_TOKEN_ENDPOINT: ${REFRESH_TOKEN_ENDPOINT}`);
+
+      const options: FetchOptions = {
+        method: 'GET',
+        headers: {
+          [API_KEY_NAME]: API_KEY_VALUE,
+          'Require-Token': 'false',
+          'Accept-Language': import.meta.client ? 'en' : 'en',
+        },
+        credentials: 'include',
+      };
+
+      try {
+        const response = await $fetch(
+          `${BASE_URL}/${REFRESH_TOKEN_ENDPOINT}`,
+          options
+        );
+        return {
+          success: true,
+          data: response.data,
+          status: 200,
+        };
+      } catch (error: any) {
+        if (error.status) {
+          const remoteResponse = error.data;
+          console.info(
+            `[Interceptor:getRefreshToken] getRefreshToken.catch.error.remote:`,
+            `${error.message} - ${JSON.stringify(remoteResponse)}`
+          );
+        } else {
+          console.info(`[Interceptor:getRefreshToken] getRefreshToken.catch.error.internal:`, error);
+          forceLogout();
+        }
+
+        throw error;
+      }
+    };
+    //#endregion
+
+    return {
+      provide: {
+        setupInterceptorsTo: setupInterceptorsTo,
+      },
+    };
+  },
+});
