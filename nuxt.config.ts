@@ -19,14 +19,16 @@ export default defineNuxtConfig({
     '@nuxt/scripts',
     '@primevue/nuxt-module',
     '@pinia/nuxt',
-    '@nuxtjs/i18n'
+    '@nuxtjs/i18n',
   ],
   runtimeConfig: {
     apiBaseUrl:
       process.env.NUXT_PUBLIC_API_BASE_URL ||
       'https://retts-webapp-api-dev.retts.cloud',
     apiKeyName: process.env.NUXT_PUBLIC_API_KEY_NAME || 'Retts-Api-Key',
-    apiKeyValue: process.env.NUXT_PUBLIC_API_KEY_VALUE || '941faf76-hqao-6956-kcjv-dbd30350cb40',
+    apiKeyValue:
+      process.env.NUXT_PUBLIC_API_KEY_VALUE ||
+      '941faf76-hqao-6956-kcjv-dbd30350cb40',
     cryptoAlgorithm: process.env.NUXT_PUBLIC_CRYPTO_ALGORITHM || 'aes-256-cbc',
     cryptoSecretKey:
       process.env.NUXT_PUBLIC_CRYPTO_SECRET_KEY ||
@@ -40,13 +42,15 @@ export default defineNuxtConfig({
         process.env.NUXT_PUBLIC_API_BASE_URL ||
         'https://retts-webapp-api-dev.retts.cloud',
       apiKeyName: process.env.NUXT_PUBLIC_API_KEY_NAME || 'Retts-Api-Key',
-      apiKeyValue: process.env.NUXT_PUBLIC_API_KEY_VALUE || '941faf76-hqao-6956-kcjv-dbd30350cb40',
-    }
+      apiKeyValue:
+        process.env.NUXT_PUBLIC_API_KEY_VALUE ||
+        '941faf76-hqao-6956-kcjv-dbd30350cb40',
+    },
   },
   //Nitro configuration
   nitro: {
     hooks: {
-      'rollup:before': nitro => {
+      'rollup:before': (nitro) => {
         nitro.options.moduleSideEffects.push('reflect-metadata');
       },
     },
@@ -61,20 +65,21 @@ export default defineNuxtConfig({
   },
   // Vite
   vite: {
-    plugins: [
-      tailwindcss(),
-    ],
+    plugins: [tailwindcss()],
     server: {
-      allowedHosts: true
-    }
+      allowedHosts: true,
+      watch: {
+        usePolling: true,
+      },
+    },
   },
   // PrimeVue module configuration
   primevue: {
     components: {
-      include: '*'
+      include: '*',
     },
     directives: {
-      include: '*'
+      include: '*',
     },
     options: {
       filterMatchModeOptions: {
@@ -111,17 +116,14 @@ export default defineNuxtConfig({
           darkModeSelector: '.app-dark',
           cssLayer: {
             name: 'primevue',
-            order: 'theme, base, primevue'
-          }
-        }
-      }
-    }
+            order: 'theme, base, primevue',
+          },
+        },
+      },
+    },
   },
   // CSS configuration
-  css: [
-    'primeicons/primeicons.css',
-    './app/assets/theme/tailwind.css'
-  ],
+  css: ['primeicons/primeicons.css', './app/assets/theme/tailwind.css'],
   //Typescript configuration
   typescript: {
     tsConfig: {
@@ -134,9 +136,9 @@ export default defineNuxtConfig({
         noImplicitAny: true,
         isolatedModules: true,
         resolveJsonModule: true,
-        noEmit: true
-      }
-    }
+        noEmit: true,
+      },
+    },
   },
   // i18n configuration
   i18n: {
@@ -157,5 +159,4 @@ export default defineNuxtConfig({
       alwaysRedirect: false,
     },
   },
-
-})
+});
