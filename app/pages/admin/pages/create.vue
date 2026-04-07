@@ -420,7 +420,7 @@
         <TabPanel :value="1">
           <!-- Page Design Editor -->
           <div class="p-4">
-            <h2 class="text-xl font-semibold mb-4">Page Design</h2>
+            <PageDesign />
             <!-- Content editor, block editor, etc. -->
           </div>
         </TabPanel>
@@ -450,6 +450,7 @@ import BlockSelector from '~/components/admin/pages/BlockSelector.vue';
 import BlockEditor from '~/components/admin/pages/BlockEditor.vue';
 import { usePageForm } from '~/composables/admin/usePageForm';
 import type { PageFormData } from '~/utils/types/admin/page.types';
+import PageDesign from '~/components/admin/pages/PageDesign.vue';
 
 definePageMeta({
   layout: 'admin',

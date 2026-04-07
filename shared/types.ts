@@ -17,7 +17,7 @@ export interface BlockConfig {
   type?: 'predefined' | 'custom'; // Optional: defaults to 'custom' for backward compatibility
   component?: string; // For predefined widgets: 'HeroWidget', 'FeaturesWidget', etc.
   components?: ComponentConfig[]; // For custom blocks: array of field components,
-  child: ComponentConfig; // For custom blocks with a single child component (e.g., wrapper)
+  child?: ComponentConfig; // For custom blocks with a single child component (e.g., wrapper)
 
   // CLEAR SEPARATION:
   props?: Record<string, any>; // Component configuration (class, style, layout settings)
@@ -79,27 +79,27 @@ export interface BlockContentSchema {
 
 // Page type classification
 export type PageType =
-  | 'static'              // Regular page (about, contact)
-  | 'collection-list'     // Shows list of items
-  | 'collection-detail'   // Shows single item
-  | 'landing'             // Marketing landing page
-  | 'custom';             // Custom template
+  | 'static' // Regular page (about, contact)
+  | 'collection-list' // Shows list of items
+  | 'collection-detail' // Shows single item
+  | 'landing' // Marketing landing page
+  | 'custom'; // Custom template
 
 // Page category classification
 export type PageCategory =
-  | 'content'             // Blog, articles
-  | 'commerce'            // Products, services
-  | 'portfolio'           // Projects, work
-  | 'community'           // Forums, members
-  | 'utility';            // Search, 404, etc.
+  | 'content' // Blog, articles
+  | 'commerce' // Products, services
+  | 'portfolio' // Projects, work
+  | 'community' // Forums, members
+  | 'utility'; // Search, 404, etc.
 
 // Collection metadata for list and detail pages
 export interface CollectionMeta {
-  type: string;                      // 'blog', 'product', 'project'
-  isDetail: boolean;                 // true for detail pages
-  itemId?: string | number;          // ID of specific item
-  itemSlug?: string;                 // Slug of specific item
-  parentPage?: string;               // Link back to listing
+  type: string; // 'blog', 'product', 'project'
+  isDetail: boolean; // true for detail pages
+  itemId?: string | number; // ID of specific item
+  itemSlug?: string; // Slug of specific item
+  parentPage?: string; // Link back to listing
 
   // For listing pages
   totalItems?: number;
@@ -138,20 +138,20 @@ export interface SEOMeta {
 
 // Page metadata - explicit page type and category
 export interface PageMeta {
-  type: PageType;                    // Explicit page type
-  category?: PageCategory;           // Optional category
-  template?: string;                 // Optional template name
-  collection?: CollectionMeta;       // Collection-specific data
+  type: PageType; // Explicit page type
+  category?: PageCategory; // Optional category
+  template?: string; // Optional template name
+  collection?: CollectionMeta; // Collection-specific data
 }
 
 // Main page configuration
 export interface PageConfig {
-  id?: string;                       // Unique page identifier
-  name: string;                      // Page name (legacy)
-  path: string;                      // URL path
-  title?: string;                    // Page title
+  id?: string; // Unique page identifier
+  name: string; // Page name (legacy)
+  path: string; // URL path
+  title?: string; // Page title
 
-  meta: PageMeta;                    // Enhanced page metadata
-  seoMeta?: SEOMeta;                 // Enhanced SEO metadata
-  blocks: BlockConfig[];             // Content blocks
+  meta: PageMeta; // Enhanced page metadata
+  seoMeta?: SEOMeta; // Enhanced SEO metadata
+  blocks: BlockConfig[]; // Content blocks
 }

@@ -68,9 +68,9 @@ export default defineNuxtConfig({
     plugins: [tailwindcss()],
     server: {
       allowedHosts: true,
-      watch: {
-        usePolling: true,
-      },
+      // watch: {
+      //   usePolling: true,
+      // },
     },
   },
   // PrimeVue module configuration
