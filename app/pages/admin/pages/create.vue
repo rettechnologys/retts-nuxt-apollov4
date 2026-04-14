@@ -491,6 +491,7 @@ const {
   generateSlug,
   checkSlugUniqueness,
   savePage,
+  updatePage,
   resetForm: resetPageFormState,
 } = usePageForm();
 
@@ -548,7 +549,8 @@ const submitIntent = ref<SubmitIntent>('draft');
 //#endregion State
 
 //#region Computed
-const isEdit = computed(() => !!route.params.id);
+const isEdit = computed(() => !!route.query.edit);
+const editSlug = computed(() => route.query.edit as string | undefined);
 const pageUrlPreview = computed(() => {
   const baseUrl = 'https://example.com';
   return slugValue.value ? `${baseUrl}/${slugValue.value}` : baseUrl;
@@ -601,10 +603,24 @@ const scheduledAtModel = computed<Date | null>({
 
 //#region Lifecycle Hooks
 onMounted(async () => {
-  if (!isEdit.value) return;
+  if (!editSlug.value) return;
 
-  const pageId = route.params.id;
-  console.log('Loading page:', pageId);
+  try {
+    const stored = await $fetch<{ payload: PageFormData }>(
+      `/api/admin/pages/${editSlug.value}`,
+    );
+    const p = stored.payload;
+    resetForm({ values: { ...DEFAULT_FORM_VALUES, ...p } });
+    slugManuallyEdited.value = true;
+    slugStatus.value = 'available';
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Could not load page for editing',
+      life: 4000,
+    });
+  }
 });
 
 onBeforeRouteLeave((to, from, next) => {
@@ -702,7 +718,9 @@ const submitPage = handleSubmit(
       return { success: false };
     }
 
-    const result = await savePage(payload, submitIntent.value === 'draft');
+    const result = isEdit.value
+      ? await updatePage(payload, submitIntent.value === 'draft')
+      : await savePage(payload, submitIntent.value === 'draft');
 
     if (!result.success) {
       toast.add({

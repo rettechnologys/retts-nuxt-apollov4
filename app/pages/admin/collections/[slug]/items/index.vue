@@ -206,7 +206,7 @@ definePageMeta({ layout: 'admin' });
 const toast = useToast();
 const route = useRoute();
 const collectionSlug = computed(() => route.params.slug as string);
-
+console.log(`Collection slug from route: ${collectionSlug.value}`); // Debug log
 // ─── Schema ───────────────────────────────────────────────────────────────────
 const { data: schema, pending } = await useFetch<CollectionSchema>(
   () => `/api/collections/${collectionSlug.value}`,

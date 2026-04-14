@@ -130,6 +130,38 @@ export const usePageForm = () => {
   };
 
   /**
+   * Update an existing page (skips slug uniqueness check)
+   */
+  const updatePage = async (
+    formData: PageFormData,
+    isDraft = false,
+  ): Promise<{ success: boolean; data?: any; error?: string }> => {
+    isSaving.value = true;
+
+    try {
+      const response = await $fetch<{
+        success: boolean;
+        data: unknown;
+        message?: string;
+      }>(`/api/pages/${formData.slug}`, {
+        method: 'POST',
+        body: buildPageMultipartFormData({
+          ...formData,
+          status: isDraft ? 'draft' : formData.status,
+        }),
+      });
+
+      hasChanges.value = false;
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error updating page:', error);
+      return { success: false, error: 'Failed to update page' };
+    } finally {
+      isSaving.value = false;
+    }
+  };
+
+  /**
    * Reset form state
    */
   const resetForm = () => {
@@ -142,6 +174,7 @@ export const usePageForm = () => {
     generateSlug,
     checkSlugUniqueness,
     savePage,
+    updatePage,
     resetForm,
   };
 };

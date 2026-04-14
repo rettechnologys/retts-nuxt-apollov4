@@ -433,6 +433,7 @@ export default defineEventHandler(async (event) => {
 
   if (method === 'GET') {
     const storedPage = pageStore.get(slugPath);
+    console.log(`Page config for "${slugPath}":`, storedPage?.pageConfig); // Debug log
     if (storedPage) {
       return storedPage.pageConfig;
     }

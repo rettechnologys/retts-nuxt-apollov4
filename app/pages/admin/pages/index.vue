@@ -1,382 +1,244 @@
-<!-- Pages Management - List View -->
 <template>
-  <div class="pages-management">
-    <div class="page-header">
-      <h1>Pages</h1>
-      <div class="header-actions">
-        <span class="p-input-icon-left">
-          <i class="pi pi-search" />
-          <InputText v-model="searchQuery" placeholder="Search pages..." />
-        </span>
-        <Dropdown
-          v-model="statusFilter"
-          :options="statusOptions"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="All Status"
-        />
+  <!-- Loading -->
+  <div v-if="pending" class="flex items-center justify-center py-20">
+    <i class="pi pi-spin pi-spinner text-3xl text-primary-500" />
+  </div>
+
+  <div v-else class="p-6 max-w-[1400px] mx-auto">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-xl font-bold text-surface-800 dark:text-surface-100">
+          Pages
+        </h1>
+        <p class="text-sm text-surface-500 mt-0.5">
+          {{ (data ?? []).length }}
+          {{ (data ?? []).length === 1 ? 'page' : 'pages' }}
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        <IconField class="max-w-sm">
+          <InputIcon class="pi pi-search" />
+          <InputText
+            v-model="search"
+            placeholder="Search pages…"
+            class="w-full"
+          />
+        </IconField>
         <Button
-          label="Create Page"
+          label="New Page"
           icon="pi pi-plus"
+          size="small"
           @click="navigateTo('/admin/pages/create')"
         />
       </div>
     </div>
 
-    <div class="pages-content">
-      <DataTable
-        :value="filteredPages"
-        :paginator="true"
-        :rows="15"
-        :loading="loading"
-        stripedRows
-        v-model:selection="selectedPages"
-        dataKey="id"
-      >
-        <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
-
-        <Column field="title" header="Title" sortable>
-          <template #body="{ data }">
-            <div class="page-title">
-              <i :class="getPageIcon(data.type)" style="color: #3b82f6"></i>
-              <div>
-                <div class="title-main">{{ data.title }}</div>
-                <small class="page-url">{{ data.url }}</small>
-              </div>
-            </div>
-          </template>
-        </Column>
-
-        <Column field="template" header="Template" sortable>
-          <template #body="{ data }">
-            <Badge :value="data.template" severity="info" />
-          </template>
-        </Column>
-
-        <Column field="status" header="Status" sortable>
-          <template #body="{ data }">
-            <Badge
-              :value="data.status"
-              :severity="getStatusSeverity(data.status)"
-            />
-          </template>
-        </Column>
-
-        <Column field="author" header="Author" sortable>
-          <template #body="{ data }">
-            <div class="author-cell">
-              <Avatar
-                :label="data.author.initials"
-                size="small"
-                shape="circle"
-              />
-              <span>{{ data.author.name }}</span>
-            </div>
-          </template>
-        </Column>
-
-        <Column field="views" header="Views" sortable>
-          <template #body="{ data }">
-            <span>{{ formatNumber(data.views) }}</span>
-          </template>
-        </Column>
-
-        <Column field="updatedAt" header="Last Modified" sortable>
-          <template #body="{ data }">
-            {{ formatDate(data.updatedAt) }}
-          </template>
-        </Column>
-
-        <Column header="Actions">
-          <template #body="{ data }">
-            <div class="table-actions">
-              <Button
-                icon="pi pi-eye"
-                text
-                rounded
-                severity="info"
-                @click="viewPage(data)"
-                v-tooltip.top="'View'"
-              />
-              <Button
-                icon="pi pi-pencil"
-                text
-                rounded
-                @click="editPage(data)"
-                v-tooltip.top="'Edit'"
-              />
-              <Button
-                icon="pi pi-trash"
-                text
-                rounded
-                severity="danger"
-                @click="deletePage(data)"
-                v-tooltip.top="'Delete'"
-              />
-            </div>
-          </template>
-        </Column>
-      </DataTable>
-
-      <!-- Bulk Actions -->
-      <div v-if="selectedPages.length > 0" class="bulk-actions">
-        <span>{{ selectedPages.length }} pages selected</span>
-        <Button
-          label="Publish"
-          severity="success"
-          size="small"
-          @click="bulkPublish"
-        />
-        <Button
-          label="Draft"
-          severity="secondary"
-          size="small"
-          @click="bulkDraft"
-        />
-        <Button
-          label="Delete"
-          severity="danger"
-          size="small"
-          @click="bulkDelete"
-        />
-      </div>
+    <!-- Empty state -->
+    <div
+      v-if="filteredPages.length === 0"
+      class="flex flex-col items-center justify-center py-20 border-2 border-dashed border-surface-200 dark:border-surface-700 rounded-xl text-surface-400"
+    >
+      <i class="pi pi-file text-4xl mb-4" />
+      <p class="text-lg font-medium">No pages yet</p>
+      <Button
+        label="Create Page"
+        icon="pi pi-plus"
+        class="mt-4"
+        @click="navigateTo('/admin/pages/create')"
+      />
     </div>
+
+    <!-- Table -->
+    <DataTable
+      v-else
+      :value="filteredPages"
+      stripedRows
+      class="shadow-sm rounded-xl overflow-hidden border border-surface-200 dark:border-surface-700"
+    >
+      <Column header="Title">
+        <template #body="{ data }">
+          <div class="flex flex-col">
+            <span class="font-medium">{{ data.title }}</span>
+            <code class="text-xs text-surface-400">{{ data.path }}</code>
+          </div>
+        </template>
+      </Column>
+
+      <Column header="Status" class="w-32">
+        <template #body="{ data }">
+          <Badge :value="data.status" :severity="statusSeverity(data.status)" />
+        </template>
+      </Column>
+
+      <Column header="Type" class="w-32">
+        <template #body="{ data }">
+          <span class="text-sm capitalize text-surface-500">{{
+            data.type
+          }}</span>
+        </template>
+      </Column>
+
+      <Column header="Blocks" class="w-24">
+        <template #body="{ data }">
+          <span class="text-sm text-surface-500">{{ data.blockCount }}</span>
+        </template>
+      </Column>
+
+      <Column header="Saved" class="w-44">
+        <template #body="{ data }">
+          <span class="text-sm text-surface-400">{{
+            formatDate(data.savedAt)
+          }}</span>
+        </template>
+      </Column>
+
+      <Column header="" class="w-32">
+        <template #body="{ data }">
+          <div class="flex items-center gap-1 justify-end">
+            <Button
+              icon="pi pi-eye"
+              text
+              rounded
+              size="small"
+              severity="info"
+              v-tooltip.top="'View'"
+              @click="viewPage(data)"
+            />
+            <Button
+              icon="pi pi-pencil"
+              text
+              rounded
+              size="small"
+              v-tooltip.top="'Edit'"
+              @click="editPage(data)"
+            />
+            <Button
+              icon="pi pi-trash"
+              text
+              rounded
+              size="small"
+              severity="danger"
+              v-tooltip.top="'Delete'"
+              @click="confirmDelete(data)"
+            />
+          </div>
+        </template>
+      </Column>
+    </DataTable>
   </div>
+
+  <!-- Delete confirmation dialog -->
+  <Dialog
+    v-model:visible="showDeleteDialog"
+    modal
+    header="Delete Page"
+    :style="{ width: '400px' }"
+  >
+    <p class="text-surface-600 dark:text-surface-300">
+      Are you sure you want to delete <strong>{{ pageToDelete?.title }}</strong
+      >? This cannot be undone.
+    </p>
+    <template #footer>
+      <Button
+        label="Cancel"
+        severity="secondary"
+        text
+        @click="showDeleteDialog = false"
+      />
+      <Button
+        label="Delete"
+        severity="danger"
+        icon="pi pi-trash"
+        :loading="deleting"
+        @click="doDelete"
+      />
+    </template>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  layout: 'admin',
-});
+definePageMeta({ layout: 'admin' });
 
-interface Page {
-  id: number;
+interface PageSummary {
+  slug: string;
+  id: string;
   title: string;
-  url: string;
-  type: string;
-  template: string;
   status: string;
-  author: { name: string; initials: string };
-  views: number;
-  updatedAt: string;
+  type: string;
+  path: string;
+  blockCount: number;
+  savedAt: string;
 }
 
-const loading = ref(false);
-const searchQuery = ref('');
-const statusFilter = ref('all');
-const selectedPages = ref<Page[]>([]);
+const toast = useToast();
+const search = ref('');
+const showDeleteDialog = ref(false);
+const deleting = ref(false);
+const pageToDelete = ref<PageSummary | null>(null);
 
-const pages = ref<Page[]>([
-  {
-    id: 1,
-    title: 'Home',
-    url: '/',
-    type: 'home',
-    template: 'Homepage Hero',
-    status: 'published',
-    author: { name: 'John Doe', initials: 'JD' },
-    views: 15234,
-    updatedAt: '2024-01-15',
-  },
-  {
-    id: 2,
-    title: 'About Us',
-    url: '/about',
-    type: 'page',
-    template: 'About Page',
-    status: 'published',
-    author: { name: 'Jane Smith', initials: 'JS' },
-    views: 8921,
-    updatedAt: '2024-01-14',
-  },
-  {
-    id: 3,
-    title: 'Services',
-    url: '/services',
-    type: 'page',
-    template: 'Product Listing',
-    status: 'published',
-    author: { name: 'John Doe', initials: 'JD' },
-    views: 6543,
-    updatedAt: '2024-01-13',
-  },
-  {
-    id: 4,
-    title: 'Contact',
-    url: '/contact',
-    type: 'page',
-    template: 'Contact Form',
-    status: 'published',
-    author: { name: 'Jane Smith', initials: 'JS' },
-    views: 4321,
-    updatedAt: '2024-01-12',
-  },
-  {
-    id: 5,
-    title: 'Privacy Policy',
-    url: '/privacy',
-    type: 'page',
-    template: 'About Page',
-    status: 'draft',
-    author: { name: 'John Doe', initials: 'JD' },
-    views: 0,
-    updatedAt: '2024-01-11',
-  },
-]);
-
-const statusOptions = ref([
-  { label: 'All Status', value: 'all' },
-  { label: 'Published', value: 'published' },
-  { label: 'Draft', value: 'draft' },
-  { label: 'Scheduled', value: 'scheduled' },
-]);
+const { data, pending, refresh } =
+  await useFetch<PageSummary[]>('/api/admin/pages');
 
 const filteredPages = computed(() => {
-  let result = pages.value;
-
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
-    result = result.filter(
-      (p) =>
-        p.title.toLowerCase().includes(query) ||
-        p.url.toLowerCase().includes(query),
-    );
-  }
-
-  if (statusFilter.value !== 'all') {
-    result = result.filter((p) => p.status === statusFilter.value);
-  }
-
-  return result;
+  const q = search.value.toLowerCase();
+  return (data.value ?? []).filter(
+    (p) =>
+      !q ||
+      p.title.toLowerCase().includes(q) ||
+      p.path.toLowerCase().includes(q),
+  );
 });
 
-const getPageIcon = (type: string) => {
-  const icons: Record<string, string> = {
-    home: 'pi pi-home',
-    page: 'pi pi-file',
-    blog: 'pi pi-book',
-    product: 'pi pi-shopping-cart',
-  };
-  return icons[type] || 'pi pi-file';
-};
-
-const getStatusSeverity = (status: string) => {
-  const severityMap: Record<string, string> = {
+const statusSeverity = (status: string) =>
+  ({
     published: 'success',
     draft: 'warning',
     scheduled: 'info',
-  };
-  return severityMap[status] || 'secondary';
-};
+    archived: 'secondary',
+  })[status] ?? 'secondary';
 
-const formatNumber = (num: number) => {
-  return num.toLocaleString();
-};
-
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
+const formatDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
+    year: 'numeric',
   });
+
+const viewPage = (page: PageSummary) => window.open(page.path, '_blank');
+const editPage = (page: PageSummary) =>
+  navigateTo(`/admin/pages/create?edit=${page.slug}`);
+
+const confirmDelete = (page: PageSummary) => {
+  pageToDelete.value = page;
+  showDeleteDialog.value = true;
 };
 
-const viewPage = (page: Page) => {
-  window.open(page.url, '_blank');
-};
-
-const editPage = (page: Page) => {
-  navigateTo(`/admin/pages/edit/${page.id}`);
-};
-
-const deletePage = (page: Page) => {
-  // TODO: Implement delete
-  console.log('Delete page:', page);
-};
-
-const bulkPublish = () => {
-  console.log('Bulk publish:', selectedPages.value);
-};
-
-const bulkDraft = () => {
-  console.log('Bulk draft:', selectedPages.value);
-};
-
-const bulkDelete = () => {
-  console.log('Bulk delete:', selectedPages.value);
+const doDelete = async () => {
+  if (!pageToDelete.value) return;
+  deleting.value = true;
+  try {
+    await $fetch(`/api/admin/pages/${pageToDelete.value.slug}`, {
+      method: 'DELETE',
+    });
+    toast.add({
+      severity: 'success',
+      summary: 'Deleted',
+      detail: 'Page removed',
+      life: 3000,
+    });
+    showDeleteDialog.value = false;
+    pageToDelete.value = null;
+    await refresh();
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to delete page',
+      life: 4000,
+    });
+  } finally {
+    deleting.value = false;
+  }
 };
 </script>
-
-<style scoped>
-.pages-management {
-  padding: 2rem;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-}
-
-.page-header h1 {
-  font-size: 2rem;
-  font-weight: 700;
-}
-
-.header-actions {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
-.page-title {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.page-title i {
-  font-size: 1.25rem;
-}
-
-.title-main {
-  font-weight: 500;
-}
-
-.page-url {
-  color: #6b7280;
-  font-size: 0.75rem;
-}
-
-.author-cell {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.table-actions {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.bulk-actions {
-  position: fixed;
-  bottom: 2rem;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.5rem;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  z-index: 100;
-}
-
-.bulk-actions span {
-  font-weight: 500;
-}
-</style>

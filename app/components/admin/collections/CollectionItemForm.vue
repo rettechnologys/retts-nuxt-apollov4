@@ -135,7 +135,9 @@
       <!-- date / datetime -->
       <DatePicker
         v-else-if="field.type === 'date' || field.type === 'datetime'"
-        :modelValue="modelValue[field.key]"
+        :modelValue="
+          modelValue[field.key] ? new Date(modelValue[field.key]) : null
+        "
         :showTime="field.type === 'datetime'"
         class="w-full"
         @update:modelValue="update(field.key, $event)"
