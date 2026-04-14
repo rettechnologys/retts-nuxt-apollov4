@@ -66,6 +66,9 @@ export default defineNuxtConfig({
   // Vite
   vite: {
     plugins: [tailwindcss()],
+    optimizeDeps: {
+      include: ['quill'],
+    },
     server: {
       allowedHosts: true,
       // watch: {

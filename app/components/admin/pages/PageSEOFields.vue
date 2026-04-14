@@ -18,12 +18,14 @@
           </label>
           <InputText
             id="metaTitle"
-            v-model="localSEO.metaTitle"
+            v-model="metaTitleValue"
             placeholder="Page title for search engines"
             class="w-full"
             :class="{ 'p-invalid': metaTitleLength > 60 }"
-            @input="handleInput"
           />
+          <small v-if="metaTitleError" class="text-red-500">
+            {{ metaTitleError }}
+          </small>
           <small v-if="metaTitleLength > 60" class="text-red-500">
             Meta title is too long. Keep it under 60 characters for best
             results.
@@ -43,13 +45,15 @@
           </label>
           <Textarea
             id="metaDescription"
-            v-model="localSEO.metaDescription"
+            v-model="metaDescriptionValue"
             placeholder="Brief description for search results"
             rows="3"
             class="w-full"
             :class="{ 'p-invalid': metaDescriptionLength > 160 }"
-            @input="handleInput"
           />
+          <small v-if="metaDescriptionError" class="text-red-500">
+            {{ metaDescriptionError }}
+          </small>
           <small v-if="metaDescriptionLength > 160" class="text-red-500">
             Meta description is too long. Keep it under 160 characters.
           </small>
@@ -60,10 +64,9 @@
           <label for="keywords" class="block font-medium mb-2">Keywords</label>
           <Chips
             id="keywords"
-            v-model="localSEO.keywords"
+            v-model="keywordsValue"
             placeholder="Add keyword and press Enter"
             class="w-full"
-            @update:modelValue="handleInput"
           />
           <small class="text-surface-500">
             Press Enter to add keywords. Recommended: 3-5 keywords
@@ -78,10 +81,9 @@
           <div class="flex gap-2">
             <InputText
               id="ogImage"
-              v-model="localSEO.ogImage"
+              v-model="ogImageValue"
               placeholder="https://example.com/image.jpg"
               class="flex-1"
-              @input="handleInput"
             />
             <Button icon="pi pi-upload" outlined @click="selectImage" />
           </div>
@@ -95,10 +97,9 @@
           </label>
           <InputText
             id="canonical"
-            v-model="localSEO.canonical"
+            v-model="canonicalValue"
             placeholder="https://example.com/page"
             class="w-full"
-            @input="handleInput"
           />
           <small class="text-surface-500">
             Specify the preferred URL if this content exists on multiple URLs
@@ -112,9 +113,8 @@
             <div class="flex items-center">
               <Checkbox
                 inputId="noIndex"
-                v-model="localSEO.noIndex"
+                v-model="noIndexValue"
                 :binary="true"
-                @update:modelValue="handleInput"
               />
               <label for="noIndex" class="ml-2 cursor-pointer">
                 No Index (prevent search engines from indexing this page)
@@ -123,9 +123,8 @@
             <div class="flex items-center">
               <Checkbox
                 inputId="noFollow"
-                v-model="localSEO.noFollow"
+                v-model="noFollowValue"
                 :binary="true"
-                @update:modelValue="handleInput"
               />
               <label for="noFollow" class="ml-2 cursor-pointer">
                 No Follow (prevent search engines from following links on this
@@ -165,6 +164,7 @@
 </template>
 
 <script setup lang="ts">
+import { useField } from 'vee-validate';
 import Card from 'primevue/card';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
@@ -172,36 +172,36 @@ import Chips from 'primevue/chips';
 import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
 import Divider from 'primevue/divider';
-import type { PageSEO } from '~/utils/types/admin/page.types';
 
 interface Props {
-  modelValue: PageSEO;
   pageTitle?: string;
   pageUrl?: string;
 }
 
 const props = defineProps<Props>();
-const emit = defineEmits<{
-  'update:modelValue': [value: PageSEO];
-}>();
+const { value: metaTitleValue, errorMessage: metaTitleError } = useField<
+  string | undefined
+>('seo.metaTitle', (value) => {
+  if (!value) return true;
+  return value.length <= 60 || 'Meta title should be less than 60 characters';
+});
+const { value: metaDescriptionValue, errorMessage: metaDescriptionError } =
+  useField<string | undefined>('seo.metaDescription', (value) => {
+    if (!value) return true;
+    return (
+      value.length <= 160 ||
+      'Meta description should be less than 160 characters'
+    );
+  });
+const { value: keywordsValue } = useField<string[]>('seo.keywords');
+const { value: ogImageValue } = useField<string | undefined>('seo.ogImage');
+const { value: canonicalValue } = useField<string | undefined>('seo.canonical');
+const { value: noIndexValue } = useField<boolean>('seo.noIndex');
+const { value: noFollowValue } = useField<boolean>('seo.noFollow');
 
-const localSEO = ref<PageSEO>({ ...props.modelValue });
-
-watch(
-  () => props.modelValue,
-  (newVal) => {
-    localSEO.value = { ...newVal };
-  },
-  { deep: true },
-);
-
-const handleInput = () => {
-  emit('update:modelValue', { ...localSEO.value });
-};
-
-const metaTitleLength = computed(() => localSEO.value.metaTitle?.length || 0);
+const metaTitleLength = computed(() => metaTitleValue.value?.length || 0);
 const metaDescriptionLength = computed(
-  () => localSEO.value.metaDescription?.length || 0,
+  () => metaDescriptionValue.value?.length || 0,
 );
 
 const previewUrl = computed(() => {
@@ -209,12 +209,12 @@ const previewUrl = computed(() => {
 });
 
 const previewTitle = computed(() => {
-  return localSEO.value.metaTitle || props.pageTitle || 'Page Title';
+  return metaTitleValue.value || props.pageTitle || 'Page Title';
 });
 
 const previewDescription = computed(() => {
   return (
-    localSEO.value.metaDescription ||
+    metaDescriptionValue.value ||
     'Add a meta description to see how it appears in search results.'
   );
 });

@@ -58,6 +58,11 @@
                 class="nav-child"
                 :class="{ active: isActive(child.path) }"
               >
+                <i
+                  v-if="child.icon"
+                  :class="child.icon"
+                  class="nav-child-icon"
+                />
                 {{ child.label }}
               </NuxtLink>
             </div>
@@ -122,7 +127,26 @@ const userInitials = computed(() => {
     .toUpperCase();
 });
 
-const menuItems = ref([
+// ─── Dynamic collections nav ──────────────────────────────────────────────────
+const { data: collectionsData } = await useFetch<
+  { slug: string; name: string; icon: string }[]
+>('/api/collections', { default: () => [] });
+
+const collectionsChildren = computed(() => [
+  { path: '/admin/collections', label: 'All Collections', icon: 'pi pi-list' },
+  {
+    path: '/admin/collections/create',
+    label: 'New Collection',
+    icon: 'pi pi-plus',
+  },
+  ...(collectionsData.value ?? []).map((c) => ({
+    path: `/admin/collections/${c.slug}/items`,
+    label: c.name,
+    icon: c.icon || 'pi pi-database',
+  })),
+]);
+
+const menuItems = computed(() => [
   {
     path: '/admin',
     label: 'Dashboard',
@@ -153,12 +177,7 @@ const menuItems = ref([
     path: '/admin/collections',
     label: 'Collections',
     icon: 'pi pi-database',
-    children: [
-      { path: '/admin/collections/blog', label: 'Blog Posts' },
-      { path: '/admin/collections/products', label: 'Products' },
-      { path: '/admin/collections/projects', label: 'Projects' },
-      { path: '/admin/collections/manage', label: 'Manage Collections' },
-    ],
+    children: collectionsChildren.value,
   },
   {
     path: '/admin/media',
@@ -197,7 +216,12 @@ const breadcrumbItems = computed(() => {
 });
 
 const isActive = (path: string) => {
-  if (path === '/admin') {
+  // Exact match for terminal pages (index-like paths that would over-match)
+  if (
+    path === '/admin' ||
+    path === '/admin/collections' ||
+    path === '/admin/collections/create'
+  ) {
     return route.path === path;
   }
   return route.path.startsWith(path);
@@ -301,12 +325,20 @@ const logout = () => {
 }
 
 .nav-child {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.5rem 1rem;
   color: #9ca3af;
   text-decoration: none;
   font-size: 0.875rem;
   transition: all 0.2s;
+}
+
+.nav-child-icon {
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  opacity: 0.7;
 }
 
 .nav-child:hover {

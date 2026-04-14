@@ -26,6 +26,18 @@ export interface BlockConfig {
   // HTML override capability
   html?: string; // Custom HTML override for the block
   sortOrder?: number; // Display order
+
+  // Collection data binding
+  dataSource?: {
+    /** Slug of the bound collection */
+    collection: string;
+    /** 'list' = multiple items, 'single' = one item by id/filter */
+    mode: 'list' | 'single';
+    /** Maps collection field keys → block content/prop keys */
+    fieldMappings: Record<string, string>;
+  };
+  /** Pre-resolved collection items injected by the page API (field mappings already applied) */
+  collectionItems?: Array<Record<string, any>>;
 }
 
 // Block definition for management

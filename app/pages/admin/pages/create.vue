@@ -1,96 +1,40 @@
 <!-- Page Create/Edit View -->
 <template>
-  <div>
-    <!-- <div
-      class="flex justify-end items-start px-8 py-6 bg-white border-b border-gray-200 sticky top-0 z-10"
-    >
-      <div class="flex items-start gap-4">
-              <Button icon="pi pi-arrow-left" text @click="handleBack" />
-              <div>
-                <h1 class="text-2xl font-bold m-0">
-                  {{ isEdit ? 'Edit Page' : 'Create New Page' }}
-                </h1>
-                <div
-                  v-if="formData.slug"
-                  class="flex items-center gap-2 text-gray-500 text-sm mt-1"
-                >
-                  <i class="pi pi-link text-xs"></i>
-                  <span>{{ pageUrlPreview }}</span>
-                </div>
-              </div>
-            </div>
-      <div class="flex gap-3">
-        <Button
-          label="Preview"
-          icon="pi pi-eye"
-          severity="secondary"
-          outlined
-          :disabled="!formData.title"
-          @click="previewPage"
-        />
-        <Button
-          label="Save Draft"
-          icon="pi pi-save"
-          severity="secondary"
-          outlined
-          :loading="isSaving"
-          @click="saveDraft"
-        />
-        <Button
-          v-if="formData.status === 'published'"
-          label="Update"
-          icon="pi pi-check"
-          :loading="isSaving"
-          @click="publishPage"
-        />
-        <Button
-          v-else
-          label="Publish"
-          icon="pi pi-check"
-          :loading="isSaving"
-          @click="publishPage"
-        />
-      </div>
-    </div> -->
-    <Tabs :value="0">
+  <form @submit.prevent="submitWithStatus('draft')">
+    <Tabs v-model:value="activeTab">
       <TabList>
         <Tab :value="0">Basic Information</Tab>
         <Tab :value="1">Page Design</Tab>
+        <Tab :value="2">Preview &amp; Submit</Tab>
       </TabList>
+
       <TabPanels>
         <TabPanel :value="0">
-          <!-- Basic Information Form -->
-
-          <!-- Main Content -->
           <div
-            class="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-6 p-8 max-w-[1600px] mx-auto"
+            class="grid grid-cols-1 gap-6 p-8 xl:grid-cols-[1fr_400px] mx-auto max-w-[1600px]"
           >
-            <!-- Left Column - Main Form -->
             <div class="min-w-0">
-              <!-- Basic Info Card -->
               <Card>
                 <template #title>Basic Information</template>
                 <template #content>
                   <div class="space-y-4">
-                    <!-- Title -->
                     <div class="field">
                       <label for="title" class="block font-medium mb-2">
                         Page Title <span class="text-red-500">*</span>
                       </label>
                       <InputText
                         id="title"
-                        v-model="formData.title"
+                        v-model="titleValue"
                         placeholder="Enter page title"
                         class="w-full"
-                        :class="{ 'p-invalid': errors.title }"
+                        :class="{ 'p-invalid': !!titleError }"
                         @input="handleTitleChange"
                       />
-                      <small v-if="errors.title" class="text-red-500">
-                        {{ errors.title }}
+                      <small v-if="titleError" class="text-red-500">
+                        {{ titleError }}
                       </small>
                     </div>
 
-                    <!-- Slug -->
                     <div class="field">
                       <label for="slug" class="block font-medium mb-2">
                         URL Slug <span class="text-red-500">*</span>
@@ -102,22 +46,23 @@
                         >
                         <InputText
                           id="slug"
-                          v-model="formData.slug"
+                          v-model="slugValue"
                           placeholder="page-url-slug"
                           class="flex-1"
-                          :class="{ 'p-invalid': errors.slug }"
+                          :class="{ 'p-invalid': !!slugError }"
                           @input="handleSlugChange"
                         />
                         <Button
                           icon="pi pi-refresh"
+                          type="button"
                           outlined
                           size="small"
                           v-tooltip.top="'Generate from title'"
-                          @click="regenerateSlug"
+                          @click.prevent="regenerateSlug"
                         />
                       </div>
-                      <small v-if="errors.slug" class="text-red-500">
-                        {{ errors.slug }}
+                      <small v-if="slugError" class="text-red-500">
+                        {{ slugError }}
                       </small>
                       <small
                         v-else-if="slugStatus === 'checking'"
@@ -140,196 +85,63 @@
                       </small>
                     </div>
 
-                    <!-- Page Type -->
                     <div class="field">
                       <label for="pageType" class="block font-medium mb-2">
                         Page Type <span class="text-red-500">*</span>
                       </label>
                       <Select
                         inputId="pageType"
-                        v-model="formData.type"
+                        v-model="typeValue"
                         :options="pageTypes"
                         optionLabel="label"
                         optionValue="value"
                         placeholder="Select page type"
                         class="w-full"
-                        :class="{ 'p-invalid': errors.type }"
-                        @change="hasChanges = true"
+                        :class="{ 'p-invalid': !!typeError }"
                       >
                         <template #option="{ option }">
                           <div class="flex items-center gap-2">
                             <i :class="option.icon"></i>
                             <div>
                               <div class="font-medium">{{ option.label }}</div>
-                              <small class="text-surface-500">{{
-                                option.description
-                              }}</small>
+                              <small class="text-surface-500">
+                                {{ option.description }}
+                              </small>
                             </div>
                           </div>
                         </template>
                       </Select>
-                      <small v-if="errors.type" class="text-red-500">
-                        {{ errors.type }}
+                      <small v-if="typeError" class="text-red-500">
+                        {{ typeError }}
                       </small>
                     </div>
-
-                    <!-- Template Selection -->
-                    <!-- <div class="field">
-                      <label for="template" class="block font-medium mb-2">
-                        Template
-                      </label>
-                      <Select
-                        inputId="template"
-                        v-model="formData.templateId"
-                        :options="availableTemplates"
-                        optionLabel="name"
-                        optionValue="id"
-                        placeholder="Select a template (optional)"
-                        class="w-full"
-                        :showClear="true"
-                        @change="hasChanges = true"
-                      >
-                        <template #option="{ option }">
-                          <div>
-                            <div class="font-medium">{{ option.name }}</div>
-                            <small class="text-surface-500">{{
-                              option.description
-                            }}</small>
-                          </div>
-                        </template>
-                      </Select>
-                      <small class="text-surface-500">
-                        Choose a pre-built template or build from scratch
-                      </small>
-                    </div> -->
                   </div>
                 </template>
               </Card>
 
-              <!-- Content Editor Card -->
-              <!-- <Card class="mt-4">
-                <template #title>Page Content</template>
-                <template #content>
-                  <Tabs value="0">
-                    <TabList>
-                      <Tab value="0">Visual Editor</Tab>
-                      <Tab value="1">HTML</Tab>
-                      <Tab value="2">JSON</Tab>
-                    </TabList>
-                    <TabPanels>
-                      <TabPanel value="0">
-                        <div class="min-h-[300px]">
-                          <Message
-                            severity="info"
-                            :closable="false"
-                            class="mb-4"
-                          >
-                            <div class="flex items-center gap-2">
-                              <i class="pi pi-info-circle"></i>
-                              <span
-                                >Drag and drop blocks to build your page. Click
-                                "Add Block" to get started.</span
-                              >
-                            </div>
-                          </Message>
-                          <Button
-                            label="Add Block"
-                            icon="pi pi-plus"
-                            outlined
-                            @click="showBlockSelector = true"
-                          />
-                          <div
-                            v-if="
-                              formData.content.blocks &&
-                              formData.content.blocks.length > 0
-                            "
-                            class="flex flex-col gap-4 mt-4"
-                          >
-                            <div
-                              v-for="(block, index) in formData.content.blocks"
-                              :key="index"
-                              class="p-4 border border-gray-200 rounded-md bg-gray-50"
-                            >
-                              <div class="flex justify-between items-center">
-                                <span class="font-medium"
-                                  >{{ block.name || block.type }} Block</span
-                                >
-                                <div class="flex gap-1">
-                                  <Button
-                                    icon="pi pi-pencil"
-                                    text
-                                    size="small"
-                                    @click="editBlock(index)"
-                                  />
-                                  <Button
-                                    icon="pi pi-trash"
-                                    text
-                                    size="small"
-                                    severity="danger"
-                                    @click="removeBlock(index)"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </TabPanel>
-
-                      <TabPanel value="1">
-                        <Textarea
-                          v-model="formData.content.html"
-                          rows="15"
-                          class="w-full font-mono text-sm"
-                          placeholder="<div>Your HTML content here...</div>"
-                          @input="hasChanges = true"
-                        />
-                      </TabPanel>
-
-                      <TabPanel value="2">
-                        <Textarea
-                          :modelValue="jsonContent"
-                          rows="15"
-                          class="w-full font-mono text-sm"
-                          placeholder="{}"
-                          @update:modelValue="updateJsonContent"
-                        />
-                      </TabPanel>
-                    </TabPanels>
-                  </Tabs>
-                </template>
-              </Card> -->
-              <!-- SEO Settings -->
               <PageSEOFields
-                v-model="formData.seo"
-                :pageTitle="formData.title"
-                :pageUrl="pageUrlPreview"
+                :page-title="values.title"
+                :page-url="pageUrlPreview"
                 class="mt-4"
               />
-
-              <!-- Page Settings -->
-              <PageSettingsPanel v-model="formData.settings" class="mt-4" />
             </div>
 
-            <!-- Right Column - Settings -->
             <div class="xl:sticky xl:top-[100px] h-fit">
-              <!-- Status Card -->
               <Card>
                 <template #title>Publish</template>
                 <template #content>
                   <div class="space-y-4">
-                    <!-- Status -->
                     <div class="field">
-                      <label for="status" class="block font-medium mb-2"
-                        >Status</label
-                      >
+                      <label for="status" class="block font-medium mb-2">
+                        Status
+                      </label>
                       <Select
                         inputId="status"
-                        v-model="formData.status"
+                        v-model="statusValue"
                         :options="statusOptions"
                         optionLabel="label"
                         optionValue="value"
                         class="w-full"
-                        @change="hasChanges = true"
                       >
                         <template #option="{ option }">
                           <div class="flex items-center gap-2">
@@ -354,28 +166,29 @@
                       </Select>
                     </div>
 
-                    <!-- Schedule Publishing -->
-                    <div v-if="formData.status === 'scheduled'" class="field">
+                    <div v-if="statusValue === 'scheduled'" class="field">
                       <label for="scheduledAt" class="block font-medium mb-2">
-                        Publish Date & Time
+                        Publish Date &amp; Time
                       </label>
                       <DatePicker
                         inputId="scheduledAt"
-                        v-model="formData.scheduledAt"
+                        v-model="scheduledAtModel"
                         showTime
                         hourFormat="12"
                         class="w-full"
-                        @update:modelValue="hasChanges = true"
+                        :class="{ 'p-invalid': !!scheduledAtError }"
                       />
+                      <small v-if="scheduledAtError" class="text-red-500">
+                        {{ scheduledAtError }}
+                      </small>
                     </div>
 
-                    <!-- Visibility Info -->
                     <div class="p-4 bg-gray-50 rounded-md">
                       <div class="flex items-center gap-2">
                         <i class="pi pi-eye text-surface-500"></i>
                         <span class="text-sm">
                           {{
-                            formData.status === 'published'
+                            statusValue === 'published'
                               ? 'Visible to public'
                               : 'Not visible to public'
                           }}
@@ -385,60 +198,195 @@
                   </div>
                 </template>
               </Card>
+
+              <PageSettingsPanel class="mt-4" />
             </div>
           </div>
-
-          <!-- Unsaved Changes Dialog -->
-          <Dialog
-            v-model:visible="showUnsavedDialog"
-            header="Unsaved Changes"
-            :modal="true"
-            :closable="false"
-          >
-            <p>
-              You have unsaved changes. Do you want to save them before leaving?
-            </p>
-            <template #footer>
-              <Button label="Discard" severity="secondary" outlined />
-              <Button label="Save Draft" @click="saveAndLeave" />
-            </template>
-          </Dialog>
-
-          <!-- Block Selector Dialog -->
-          <BlockSelector
-            v-model:visible="showBlockSelector"
-            @select="addBlock"
-          />
-
-          <!-- Block Editor Dialog -->
-          <BlockEditor
-            v-model:visible="showBlockEditor"
-            :blockData="editingBlock"
-            @save="saveBlockConfig"
-          />
         </TabPanel>
+
         <TabPanel :value="1">
-          <!-- Page Design Editor -->
           <div class="p-4">
-            <PageDesign />
-            <!-- Content editor, block editor, etc. -->
+            <Message
+              v-if="blocksError"
+              severity="error"
+              :closable="true"
+              class="mb-4"
+            >
+              {{ blocksError }}
+            </Message>
+            <PageDesign
+              v-model="pageBlocksModel"
+              :collection-cache="collectionData"
+              :collections="collectionsListData ?? []"
+              :collections-loading="collectionsLoading"
+              :schemas="schemaCache"
+              @fetch:collection="fetchCollection"
+            />
+          </div>
+        </TabPanel>
+
+        <TabPanel :value="2">
+          <div class="grid gap-6 p-8 xl:grid-cols-1 mx-auto max-w-[1600px]">
+            <div class="space-y-4 xl:sticky xl:top-[100px] h-fit">
+              <Card>
+                <template #title>Submission Summary</template>
+                <template #content>
+                  <div class="grid xl:grid-cols-3 space-y-4 text-sm">
+                    <div class="flex gap-8">
+                      <div class="">
+                        <div
+                          class="text-surface-500 uppercase tracking-wider text-xs"
+                        >
+                          Title
+                        </div>
+                        <div class="mt-1 font-semibold text-surface-800">
+                          {{ values.title || 'Untitled page' }}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div
+                          class="text-surface-500 uppercase tracking-wider text-xs"
+                        >
+                          Path
+                        </div>
+                        <div class="mt-1 text-surface-700">
+                          {{ pageUrlPreview }}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                      <div class="rounded-xl bg-surface-50 p-3">
+                        <div
+                          class="text-surface-500 uppercase tracking-wider text-xs"
+                        >
+                          Status
+                        </div>
+                        <div
+                          class="mt-1 font-medium text-surface-800 capitalize"
+                        >
+                          {{ statusValue }}
+                        </div>
+                      </div>
+                      <div class="rounded-xl bg-surface-50 p-3">
+                        <div
+                          class="text-surface-500 uppercase tracking-wider text-xs"
+                        >
+                          Blocks
+                        </div>
+                        <div class="mt-1 font-medium text-surface-800">
+                          {{ values.blocks.length }}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="flex flex-col gap-2 pt-2">
+                      <ButtonGroup class="w-full justify-center">
+                        <!-- <Button
+                          label="Schedule"
+                          type="button"
+                          icon="pi pi-calendar"
+                          outlined
+                          :loading="isSaving"
+                          @click="submitWithStatus('schedule')"
+                        />
+                        <Button
+                          label="Save Draft"
+                          type="button"
+                          icon="pi pi-save"
+                          :loading="isSaving"
+                          @click="submitWithStatus('draft')"
+                        /> -->
+                        <Button
+                          label="Submit"
+                          type="button"
+                          icon="pi pi-send"
+                          severity="success"
+                          :loading="isSaving"
+                          @click="submitWithStatus('publish')"
+                        />
+                      </ButtonGroup>
+                    </div>
+                  </div>
+                </template>
+              </Card>
+            </div>
+
+            <div class="space-y-4">
+              <div
+                class="rounded-3xl border border-surface-200 bg-surface-0 p-6"
+              >
+                <div class="flex items-start justify-between gap-4">
+                  <div>
+                    <p
+                      class="text-xs uppercase tracking-[0.18em] text-surface-500"
+                    >
+                      Live Preview
+                    </p>
+                    <h2 class="mt-2 text-2xl font-semibold text-surface-900">
+                      {{ values.title || 'Untitled page' }}
+                    </h2>
+                    <p class="mt-2 text-sm text-surface-500">
+                      {{ pageUrlPreview }}
+                    </p>
+                  </div>
+                  <Badge
+                    :value="
+                      statusOptions.find(
+                        (option) => option.value === statusValue,
+                      )?.label
+                    "
+                    :severity="
+                      statusOptions.find(
+                        (option) => option.value === statusValue,
+                      )?.severity
+                    "
+                  />
+                </div>
+              </div>
+
+              <PageDesignPreview
+                :blocks="values.blocks"
+                :collection-cache="collectionData"
+              />
+            </div>
           </div>
         </TabPanel>
       </TabPanels>
     </Tabs>
-  </div>
+
+    <Dialog
+      v-model:visible="showUnsavedDialog"
+      header="Unsaved Changes"
+      :modal="true"
+      :closable="false"
+    >
+      <p>You have unsaved changes. Do you want to save them before leaving?</p>
+      <template #footer>
+        <Button
+          type="button"
+          label="Discard"
+          severity="secondary"
+          outlined
+          @click="discardChanges"
+        />
+        <Button type="button" label="Save Draft" @click="saveAndLeave" />
+      </template>
+    </Dialog>
+  </form>
 </template>
 
 <script setup lang="ts">
+//#region Imports
+import { useField, useForm } from 'vee-validate';
 import Card from 'primevue/card';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
-import Textarea from 'primevue/textarea';
 import Badge from 'primevue/badge';
 import DatePicker from 'primevue/datepicker';
 import Dialog from 'primevue/dialog';
-import Message from 'primevue/message';
 import Tabs from 'primevue/tabs';
 import TabList from 'primevue/tablist';
 import Tab from 'primevue/tab';
@@ -446,61 +394,59 @@ import TabPanels from 'primevue/tabpanels';
 import TabPanel from 'primevue/tabpanel';
 import PageSEOFields from '~/components/admin/pages/PageSEOFields.vue';
 import PageSettingsPanel from '~/components/admin/pages/PageSettingsPanel.vue';
-import BlockSelector from '~/components/admin/pages/BlockSelector.vue';
-import BlockEditor from '~/components/admin/pages/BlockEditor.vue';
-import { usePageForm } from '~/composables/admin/usePageForm';
-import type { PageFormData } from '~/utils/types/admin/page.types';
 import PageDesign from '~/components/admin/pages/PageDesign.vue';
+import PageDesignPreview from '~/components/admin/pages/PageDesignPreview.vue';
+import { usePageForm } from '~/composables/admin/usePageForm';
+import type { BlockDefinition } from '~/components/admin/pages/pageDesign.types';
+import type {
+  PageFormData,
+  PageSettings,
+} from '~/utils/types/admin/page.types';
+import type {
+  CollectionSchemaWithCount,
+  CollectionSchema,
+} from '~/utils/types/admin/collection.types';
+//#endregion Imports
 
+//#region Props, Emit, Macros
 definePageMeta({
   layout: 'admin',
 });
+//#endregion Props, Emit, Macros
 
-const route = useRoute();
-const router = useRouter();
-const isEdit = computed(() => !!route.params.id);
+//#region Types
+type SubmitIntent = 'draft' | 'publish' | 'schedule';
+//#endregion Types
 
-// Form composable
-const { errors, isSaving, hasChanges, generateSlug, savePage } = usePageForm();
+//#region Constants
+let slugCheckTimeout: ReturnType<typeof setTimeout> | undefined;
 
-// Form data
-const formData = ref<PageFormData>({
+const DEFAULT_PAGE_SETTINGS: PageSettings = {
+  isHomepage: false,
+  requireAuth: false,
+  allowComments: false,
+  showInMenu: false,
+  menuOrder: 0,
+  parentPageId: null,
+  customCSS: '',
+  customJS: '',
+};
+
+const DEFAULT_FORM_VALUES: PageFormData = {
   title: '',
   slug: '',
   type: 'page',
   status: 'draft',
-  content: {
-    blocks: [],
-    html: '',
-    json: {},
-  },
+  blocks: [],
   seo: {
-    keywords: '',
+    keywords: [],
     noIndex: false,
+    noFollow: false,
   },
-  settings: {
-    isHomepage: false,
-    requireAuth: false,
-    allowComments: false,
-    showInMenu: false,
-    menuOrder: 0,
-  },
-});
+  settings: { ...DEFAULT_PAGE_SETTINGS },
+};
 
-// Slug checking
-const slugStatus = ref<'idle' | 'checking' | 'available' | 'taken'>('idle');
-let slugCheckTimeout: NodeJS.Timeout;
-
-// UI state
-const showUnsavedDialog = ref(false);
-const showBlockSelector = ref(false);
-const showBlockEditor = ref(false);
-const editingBlockIndex = ref<number | null>(null);
-const editingBlock = ref<any>(null);
-const pendingNavigation = ref('');
-
-// Page types
-const pageTypes = ref([
+const pageTypes = [
   {
     value: 'home',
     label: 'Homepage',
@@ -525,177 +471,315 @@ const pageTypes = ref([
     icon: 'pi pi-book',
     description: 'Blog article',
   },
-]);
+];
 
-// Status options
-const statusOptions = ref([
+const statusOptions = [
   { value: 'draft', label: 'Draft', severity: 'warning' },
   { value: 'published', label: 'Published', severity: 'success' },
   { value: 'scheduled', label: 'Scheduled', severity: 'info' },
   { value: 'archived', label: 'Archived', severity: 'secondary' },
-]);
+];
+//#endregion Constants
 
-// Available templates (mock data)
-const availableTemplates = ref([
-  { id: 1, name: 'Homepage Hero', description: 'Hero section with CTA' },
-  { id: 2, name: 'About Page', description: 'About us layout' },
-  { id: 3, name: 'Product Listing', description: 'Product grid layout' },
-  { id: 4, name: 'Contact Form', description: 'Contact page with form' },
-]);
+//#region Composables
+const toast = useToast();
+const route = useRoute();
+const router = useRouter();
+const {
+  isSaving,
+  hasChanges,
+  generateSlug,
+  checkSlugUniqueness,
+  savePage,
+  resetForm: resetPageFormState,
+} = usePageForm();
 
-// Computed
-const pageUrlPreview = computed(() => {
-  const baseUrl = 'https://example.com';
-  return formData.value.slug ? `${baseUrl}/${formData.value.slug}` : baseUrl;
-});
-
-const jsonContent = computed(() => {
-  return JSON.stringify(formData.value.content.json || {}, null, 2);
-});
-
-// Methods
-const handleTitleChange = () => {
-  hasChanges.value = true;
-  // Auto-generate slug if it's empty or hasn't been manually edited
-  if (!formData.value.slug || slugStatus.value === 'idle') {
-    formData.value.slug = generateSlug(formData.value.title);
-    checkSlugAvailability();
-  }
-};
-
-const handleSlugChange = () => {
-  hasChanges.value = true;
-  formData.value.slug = generateSlug(formData.value.slug);
-  checkSlugAvailability();
-};
-
-const regenerateSlug = () => {
-  formData.value.slug = generateSlug(formData.value.title);
-  checkSlugAvailability();
-};
-
-const checkSlugAvailability = () => {
-  if (!formData.value.slug) return;
-
-  slugStatus.value = 'checking';
-  clearTimeout(slugCheckTimeout);
-
-  slugCheckTimeout = setTimeout(async () => {
-    // Mock check - replace with actual API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    slugStatus.value = 'available';
-  }, 800);
-};
-
-const updateJsonContent = (value: string) => {
-  try {
-    formData.value.content.json = JSON.parse(value);
-    hasChanges.value = true;
-  } catch (e) {
-    console.error('Invalid JSON');
-  }
-};
-
-const saveDraft = async () => {
-  formData.value.status = 'draft';
-  const result = await savePage(formData.value, true);
-
-  if (result.success) {
-    router.push('/admin/pages');
-  }
-};
-
-const publishPage = async () => {
-  if (formData.value.status === 'draft') {
-    formData.value.status = 'published';
-  }
-
-  const result = await savePage(formData.value, false);
-
-  if (result.success) {
-    router.push('/admin/pages');
-  }
-};
-
-const previewPage = () => {
-  // TODO: Implement preview
-  window.open(`/preview/${formData.value.slug}`, '_blank');
-};
-
-const handleBack = () => {
-  if (hasChanges.value) {
-    pendingNavigation.value = '/admin/pages';
-    showUnsavedDialog.value = true;
-  } else {
-    router.push('/admin/pages');
-  }
-};
-const saveAndLeave = async () => {
-  await saveDraft();
-  showUnsavedDialog.value = false;
-  if (pendingNavigation.value) {
-    router.push(pendingNavigation.value);
-  }
-};
-
-const addBlock = (block: any) => {
-  if (!formData.value.content.blocks) {
-    formData.value.content.blocks = [];
-  }
-
-  // Add block with default config
-  formData.value.content.blocks.push({
-    id: Date.now(),
-    type: block.type,
-    name: block.name,
-    config: {},
+const { handleSubmit, setFieldValue, setFieldError, resetForm, values, meta } =
+  useForm<PageFormData>({
+    initialValues: DEFAULT_FORM_VALUES,
   });
 
-  hasChanges.value = true;
-};
+const { value: titleValue, errorMessage: titleError } = useField<string>(
+  'title',
+  (value) => {
+    if (!value?.trim()) return 'Title is required';
+    return value.length <= 200 || 'Title must be less than 200 characters';
+  },
+);
 
-const removeBlock = (index: number) => {
-  formData.value.content.blocks?.splice(index, 1);
-  hasChanges.value = true;
-};
+const { value: slugValue, errorMessage: slugError } = useField<string>(
+  'slug',
+  (value) => {
+    if (!value?.trim()) return 'Slug is required';
+    return (
+      /^[a-z0-9-]+$/.test(value) ||
+      'Slug can only contain lowercase letters, numbers, and hyphens'
+    );
+  },
+);
 
-const editBlock = (index: number) => {
-  editingBlockIndex.value = index;
-  editingBlock.value = formData.value.content.blocks?.[index];
-  showBlockEditor.value = true;
-};
+const { value: typeValue, errorMessage: typeError } = useField<string>(
+  'type',
+  (value) => !!value || 'Page type is required',
+);
 
-const saveBlockConfig = (config: any) => {
-  if (editingBlockIndex.value !== null && formData.value.content.blocks) {
-    formData.value.content.blocks[editingBlockIndex.value].config = config;
-    hasChanges.value = true;
-  }
-  editingBlockIndex.value = null;
-  editingBlock.value = null;
-};
+const { value: statusValue } = useField<PageFormData['status']>('status');
+const { value: blocksValue, errorMessage: blocksError } = useField<
+  BlockDefinition[]
+>('blocks', (value) => {
+  if (!value || value.length === 0) return 'At least one block is required';
+  return true;
+});
+const { value: scheduledAtValue, errorMessage: scheduledAtError } = useField<
+  string | undefined
+>('scheduledAt', (value) => {
+  if (statusValue.value !== 'scheduled') return true;
+  return !!value || 'Publish date and time is required';
+});
+//#endregion Composables
 
-// Prevent navigation when there are unsaved changes
-onBeforeRouteLeave((to, from, next) => {
-  router.push(pendingNavigation.value);
+//#region State
+const activeTab = ref(0);
+const slugStatus = ref<'idle' | 'checking' | 'available' | 'taken'>('idle');
+const slugManuallyEdited = ref(false);
+const showUnsavedDialog = ref(false);
+const pendingNavigation = ref('');
+const submitIntent = ref<SubmitIntent>('draft');
+//#endregion State
+
+//#region Computed
+const isEdit = computed(() => !!route.params.id);
+const pageUrlPreview = computed(() => {
+  const baseUrl = 'https://example.com';
+  return slugValue.value ? `${baseUrl}/${slugValue.value}` : baseUrl;
 });
 
-// Prevent navigation when there are unsaved changes
+const pageBlocksModel = computed<BlockDefinition[]>({
+  get: () => blocksValue.value ?? [],
+  set: (value) => {
+    setFieldValue('blocks', value);
+  },
+});
+
+// ── Collections list (fetched once on mount) ─────────────────────────────────
+const { data: collectionsListData, pending: collectionsLoading } =
+  useFetch<CollectionSchemaWithCount[]>('/api/collections');
+
+// ── Collection items + schema caches (keyed by slug) ─────────────────────────
+const collectionData = ref<Record<string, any[]>>({});
+const schemaCache = ref<Record<string, CollectionSchema>>({});
+
+const fetchCollection = async (slug: string) => {
+  if (!slug) return;
+  try {
+    const [itemsRes, schema] = await Promise.all([
+      $fetch<{ items: any[] }>(`/api/collections/${slug}/items?perPage=50`),
+      $fetch<CollectionSchema>(`/api/collections/${slug}`),
+    ]);
+    collectionData.value = {
+      ...collectionData.value,
+      [slug]: itemsRes.items ?? [],
+    };
+    schemaCache.value = { ...schemaCache.value, [slug]: schema };
+  } catch (e) {
+    console.warn(`[create] Failed to fetch collection "${slug}":`, e);
+  }
+};
+
+const scheduledAtModel = computed<Date | null>({
+  get: () => {
+    if (!scheduledAtValue.value) return null;
+
+    const parsed = new Date(scheduledAtValue.value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  },
+  set: (value) => {
+    setFieldValue('scheduledAt', value ? value.toISOString() : undefined);
+  },
+});
+//#endregion Computed
+
+//#region Lifecycle Hooks
+onMounted(async () => {
+  if (!isEdit.value) return;
+
+  const pageId = route.params.id;
+  console.log('Loading page:', pageId);
+});
+
 onBeforeRouteLeave((to, from, next) => {
   if (hasChanges.value) {
     pendingNavigation.value = to.path;
     showUnsavedDialog.value = true;
     next(false);
-  } else {
-    next();
+    return;
   }
-});
 
-// Load page data if editing
-onMounted(async () => {
-  if (isEdit.value) {
-    // TODO: Load page data from API
-    const pageId = route.params.id;
-    console.log('Loading page:', pageId);
-  }
+  next();
 });
+//#endregion Lifecycle Hooks
+
+//#region Methods
+const checkSlugAvailability = (candidate = slugValue.value ?? '') => {
+  if (!candidate) {
+    slugStatus.value = 'idle';
+    return;
+  }
+
+  slugStatus.value = 'checking';
+
+  if (slugCheckTimeout) {
+    clearTimeout(slugCheckTimeout);
+  }
+
+  slugCheckTimeout = setTimeout(async () => {
+    const isUnique = await checkSlugUniqueness(candidate);
+    console.log(`Slug "${candidate}" uniqueness:`, isUnique);
+    if (candidate !== slugValue.value) return;
+
+    slugStatus.value = isUnique ? 'available' : 'taken';
+    if (!isUnique) {
+      setFieldError('slug', 'This URL is already in use');
+    }
+  }, 800);
+};
+
+const handleTitleChange = () => {
+  if (!slugManuallyEdited.value || !slugValue.value) {
+    const nextSlug = generateSlug(titleValue.value ?? '');
+    setFieldValue('slug', nextSlug);
+    checkSlugAvailability(nextSlug);
+  }
+};
+
+const handleSlugChange = () => {
+  slugManuallyEdited.value = true;
+  const normalized = generateSlug(slugValue.value ?? '');
+  if (normalized !== slugValue.value) {
+    setFieldValue('slug', normalized);
+  }
+  checkSlugAvailability(normalized);
+};
+
+const regenerateSlug = () => {
+  slugManuallyEdited.value = false;
+  const nextSlug = generateSlug(titleValue.value ?? '');
+  setFieldValue('slug', nextSlug);
+  checkSlugAvailability(nextSlug);
+};
+
+const submitPage = handleSubmit(
+  async (validatedValues) => {
+    const nextStatus =
+      submitIntent.value === 'publish'
+        ? 'published'
+        : submitIntent.value === 'schedule'
+          ? 'scheduled'
+          : 'draft';
+
+    const payload: PageFormData = {
+      ...validatedValues,
+      status: nextStatus,
+      blocks: validatedValues.blocks ?? [],
+      seo: {
+        ...validatedValues.seo,
+        keywords: validatedValues.seo.keywords ?? [],
+      },
+      settings: {
+        ...DEFAULT_PAGE_SETTINGS,
+        ...validatedValues.settings,
+      },
+    };
+
+    if (slugStatus.value === 'taken') {
+      setFieldError('slug', 'This URL is already in use');
+      activeTab.value = 0;
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'This URL is already in use',
+      });
+      return { success: false };
+    }
+
+    const result = await savePage(payload, submitIntent.value === 'draft');
+
+    if (!result.success) {
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: result.error || 'Failed to save page',
+      });
+
+      return {
+        success: false,
+      };
+    }
+
+    console.log('Page saved successfully:', result.data);
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Page saved successfully',
+    });
+
+    resetForm({ values: payload });
+    resetPageFormState();
+    return { success: true, data: result.data };
+  },
+  ({ errors }) => {
+    activeTab.value = Object.keys(errors).some((key) =>
+      key.startsWith('blocks'),
+    )
+      ? 1
+      : 0;
+  },
+);
+
+const submitWithStatus = async (
+  intent: SubmitIntent,
+  redirectTo = '/admin/pages',
+) => {
+  submitIntent.value = intent;
+  const nextStatus =
+    intent === 'publish'
+      ? 'published'
+      : intent === 'schedule'
+        ? 'scheduled'
+        : 'draft';
+  setFieldValue('status', nextStatus);
+
+  const result = await submitPage();
+
+  if (result && result.success) {
+    await router.push(redirectTo);
+  }
+  return result;
+};
+
+const discardChanges = async () => {
+  const target = pendingNavigation.value || '/admin/pages';
+  showUnsavedDialog.value = false;
+  hasChanges.value = false;
+  await router.push(target);
+};
+
+const saveAndLeave = async () => {
+  const target = pendingNavigation.value || '/admin/pages';
+  const result = await submitWithStatus('draft', target);
+  if (result?.success) {
+    showUnsavedDialog.value = false;
+  }
+};
+//#endregion Methods
+
+//#region Watchers
+watch(
+  () => meta.value.dirty,
+  (isDirty) => {
+    hasChanges.value = isDirty;
+  },
+  { immediate: true },
+);
+//#endregion Watchers
 </script>

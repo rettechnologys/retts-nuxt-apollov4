@@ -17,6 +17,8 @@ const props = defineProps<{
   config?: TextConfig;
 }>();
 
+console.log('TextBlock config:', props.config);
+
 const alignmentClass = computed(() => {
   const alignment = props.config?.alignment || 'left';
   return {

@@ -19,11 +19,7 @@
                 Make this the main landing page of your website
               </small>
             </div>
-            <InputSwitch
-              inputId="isHomepage"
-              v-model="localSettings.isHomepage"
-              @update:modelValue="handleInput"
-            />
+            <ToggleSwitch inputId="isHomepage" v-model="isHomepageValue" />
           </div>
         </div>
 
@@ -40,11 +36,7 @@
                 Only logged-in users can access this page
               </small>
             </div>
-            <InputSwitch
-              inputId="requireAuth"
-              v-model="localSettings.requireAuth"
-              @update:modelValue="handleInput"
-            />
+            <ToggleSwitch inputId="requireAuth" v-model="requireAuthValue" />
           </div>
         </div>
 
@@ -61,10 +53,9 @@
                 Enable comments section on this page
               </small>
             </div>
-            <InputSwitch
+            <ToggleSwitch
               inputId="allowComments"
-              v-model="localSettings.allowComments"
-              @update:modelValue="handleInput"
+              v-model="allowCommentsValue"
             />
           </div>
         </div>
@@ -82,26 +73,21 @@
                 Display this page in the main navigation
               </small>
             </div>
-            <InputSwitch
-              inputId="showInMenu"
-              v-model="localSettings.showInMenu"
-              @update:modelValue="handleInput"
-            />
+            <ToggleSwitch inputId="showInMenu" v-model="showInMenuValue" />
           </div>
 
           <!-- Menu Order (shown when showInMenu is true) -->
-          <div v-if="localSettings.showInMenu" class="ml-4 mt-3">
+          <div v-if="showInMenuValue" class="ml-4 mt-3">
             <label for="menuOrder" class="block font-medium mb-2">
               Menu Order
             </label>
             <InputNumber
               inputId="menuOrder"
-              v-model="localSettings.menuOrder"
+              v-model="menuOrderValue"
               :min="0"
               :max="100"
               showButtons
               class="w-full"
-              @update:modelValue="handleInput"
             />
             <small class="text-surface-500">
               Lower numbers appear first (0 = first position)
@@ -118,14 +104,13 @@
           </label>
           <Select
             inputId="parentPage"
-            v-model="localSettings.parentPageId"
+            v-model="parentPageIdValue"
             :options="parentPageOptions"
             optionLabel="label"
             optionValue="value"
             placeholder="None (Top Level)"
             class="w-full"
             :showClear="true"
-            @update:modelValue="handleInput"
           />
           <small class="text-surface-500">
             Create a page hierarchy by setting a parent page
@@ -141,11 +126,10 @@
           </label>
           <Textarea
             inputId="customCSS"
-            v-model="localSettings.customCSS"
+            v-model="customCSSValue"
             placeholder=".my-class { color: red; }"
             rows="5"
             class="w-full font-mono text-sm"
-            @input="handleInput"
           />
           <small class="text-surface-500">
             Add custom CSS styles for this page only
@@ -161,11 +145,10 @@
           </label>
           <Textarea
             inputId="customJS"
-            v-model="localSettings.customJS"
+            v-model="customJSValue"
             placeholder="console.log('Hello');"
             rows="5"
             class="w-full font-mono text-sm"
-            @input="handleInput"
           />
           <small class="text-surface-500">
             Add custom JavaScript for this page only
@@ -178,35 +161,24 @@
 
 <script setup lang="ts">
 import Card from 'primevue/card';
-import InputSwitch from 'primevue/inputswitch';
+import Divider from 'primevue/divider';
 import InputNumber from 'primevue/inputnumber';
 import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
-import Divider from 'primevue/divider';
-import type { PageSettings } from '~/utils/types/admin/page.types';
-
-interface Props {
-  modelValue: PageSettings;
-}
-
-const props = defineProps<Props>();
-const emit = defineEmits<{
-  'update:modelValue': [value: PageSettings];
-}>();
-
-const localSettings = ref<PageSettings>({ ...props.modelValue });
-
-watch(
-  () => props.modelValue,
-  (newVal) => {
-    localSettings.value = { ...newVal };
-  },
-  { deep: true },
+import ToggleSwitch from 'primevue/toggleswitch';
+import { useField } from 'vee-validate';
+const { value: isHomepageValue } = useField<boolean>('settings.isHomepage');
+const { value: requireAuthValue } = useField<boolean>('settings.requireAuth');
+const { value: allowCommentsValue } = useField<boolean>(
+  'settings.allowComments',
 );
-
-const handleInput = () => {
-  emit('update:modelValue', { ...localSettings.value });
-};
+const { value: showInMenuValue } = useField<boolean>('settings.showInMenu');
+const { value: menuOrderValue } = useField<number>('settings.menuOrder');
+const { value: parentPageIdValue } = useField<number | null>(
+  'settings.parentPageId',
+);
+const { value: customCSSValue } = useField<string>('settings.customCSS');
+const { value: customJSValue } = useField<string>('settings.customJS');
 
 // Mock parent pages - in real app, fetch from API
 const parentPageOptions = ref([

@@ -5,12 +5,24 @@
     :data-page-type="pageConfig.meta.type"
   >
     <!-- Main content blocks -->
-    <DynamicBlockRenderer
-      v-for="(block, index) in pageConfig.blocks"
-      :key="`${block.name}-${index}`"
-      :block-config="block"
-      :page-meta="pageConfig.meta"
-    />
+    <template v-if="pageConfig.blocks && pageConfig.blocks.length > 0">
+      <DynamicBlockRenderer
+        v-for="(block, index) in pageConfig.blocks"
+        :key="`${block.name}-${index}`"
+        :block-config="block"
+        :page-meta="pageConfig.meta"
+        :collection-cache="props.collectionCache"
+        :collection-loading="props.collectionLoading"
+      />
+    </template>
+    <div
+      v-else
+      class="h-screen flex items-center justify-center p-8 text-center"
+    >
+      <p class="text-lg text-gray-500">
+        No content blocks defined for this page.
+      </p>
+    </div>
   </div>
 </template>
 
@@ -20,6 +32,8 @@ import { getPageTypeClasses, buildSeoHead } from '~/utils/helpers/SeoHelpers';
 
 interface Props {
   pageConfig: PageConfig;
+  collectionCache?: Record<string, any[]>;
+  collectionLoading?: Record<string, boolean>;
 }
 
 const props = defineProps<Props>();

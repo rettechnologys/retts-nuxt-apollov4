@@ -1,12 +1,57 @@
 /**
  * Page Form Composable
- * Reusable composable for page form logic and validation
+ * Reusable async helpers and submit state for the page form.
  */
 
-import type { PageFormData, PageValidationErrors } from '~/utils/types/admin/page.types';
+import type { PageFormData } from '~/utils/types/admin/page.types';
+
+const FILE_TOKEN_KEY = '__pageFormFileToken';
+
+const serializeFilesForFormData = (
+  value: unknown,
+  formData: FormData,
+  state: { index: number },
+): unknown => {
+  if (value instanceof File) {
+    const token = `upload-${state.index++}`;
+    formData.append(token, value, value.name);
+    return { [FILE_TOKEN_KEY]: token };
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) =>
+      serializeFilesForFormData(item, formData, state),
+    );
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, nestedValue]) => [
+      key,
+      serializeFilesForFormData(nestedValue, formData, state),
+    ]),
+  );
+};
+
+const buildPageMultipartFormData = (payload: PageFormData): FormData => {
+  const formData = new FormData();
+  const serializedPayload = serializeFilesForFormData(payload, formData, {
+    index: 0,
+  });
+
+  formData.append('payload', JSON.stringify(serializedPayload));
+
+  return formData;
+};
 
 export const usePageForm = () => {
-  const errors = ref<PageValidationErrors>({});
   const isSaving = ref(false);
   const hasChanges = ref(false);
 
@@ -23,84 +68,59 @@ export const usePageForm = () => {
   };
 
   /**
-   * Validate page form data
-   */
-  const validateForm = (formData: PageFormData): boolean => {
-    errors.value = {};
-    let isValid = true;
-
-    // Title validation
-    if (!formData.title || formData.title.trim().length === 0) {
-      errors.value.title = 'Title is required';
-      isValid = false;
-    } else if (formData.title.length > 200) {
-      errors.value.title = 'Title must be less than 200 characters';
-      isValid = false;
-    }
-
-    // Slug validation
-    if (!formData.slug || formData.slug.trim().length === 0) {
-      errors.value.slug = 'Slug is required';
-      isValid = false;
-    } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
-      errors.value.slug = 'Slug can only contain lowercase letters, numbers, and hyphens';
-      isValid = false;
-    }
-
-    // Type validation
-    if (!formData.type) {
-      errors.value.type = 'Page type is required';
-      isValid = false;
-    }
-
-    // SEO validation
-    if (formData.seo.metaTitle && formData.seo.metaTitle.length > 60) {
-      errors.value.seo = errors.value.seo || {};
-      errors.value.seo.metaTitle = 'Meta title should be less than 60 characters';
-      isValid = false;
-    }
-
-    if (formData.seo.metaDescription && formData.seo.metaDescription.length > 160) {
-      errors.value.seo = errors.value.seo || {};
-      errors.value.seo.metaDescription = 'Meta description should be less than 160 characters';
-      isValid = false;
-    }
-
-    return isValid;
-  };
-
-  /**
    * Check if slug is unique (mock implementation)
    */
-  const checkSlugUniqueness = async (slug: string, pageId?: number): Promise<boolean> => {
-    // TODO: Implement actual API call
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return true; // Mock: assume slug is unique
+  const checkSlugUniqueness = async (
+    slug: string,
+    pageId?: number,
+  ): Promise<boolean> => {
+    if (!slug?.trim()) return false;
+
+    try {
+      const res = await $fetch(`/api/pages/${slug}`);
+
+      // return !(res && typeof res === 'object');
+      return res.title !== slug;
+    } catch (error: any) {
+      if (error?.statusCode === 404 || error?.response?.status === 404) {
+        return true;
+      }
+
+      console.error('Error checking slug uniqueness:', error);
+      return true;
+    }
   };
 
   /**
    * Save page (create or update)
    */
-  const savePage = async (formData: PageFormData, isDraft = false): Promise<{ success: boolean; data?: any; error?: string }> => {
-    if (!validateForm(formData)) {
-      return { success: false, error: 'Validation failed' };
-    }
-
+  const savePage = async (
+    formData: PageFormData,
+    isDraft = false,
+  ): Promise<{ success: boolean; data?: any; error?: string }> => {
     isSaving.value = true;
 
     try {
       // Check slug uniqueness
       const isUnique = await checkSlugUniqueness(formData.slug);
       if (!isUnique) {
-        errors.value.slug = 'This slug is already in use';
         return { success: false, error: 'Slug already exists' };
       }
 
-      // TODO: Implement actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await $fetch<{
+        success: boolean;
+        data: unknown;
+        message?: string;
+      }>(`/api/pages/${formData.slug}`, {
+        method: 'POST',
+        body: buildPageMultipartFormData({
+          ...formData,
+          status: isDraft ? 'draft' : formData.status,
+        }),
+      });
 
       hasChanges.value = false;
-      return { success: true, data: formData };
+      return { success: true, data: response.data };
     } catch (error) {
       console.error('Error saving page:', error);
       return { success: false, error: 'Failed to save page' };
@@ -113,16 +133,13 @@ export const usePageForm = () => {
    * Reset form state
    */
   const resetForm = () => {
-    errors.value = {};
     hasChanges.value = false;
   };
 
   return {
-    errors,
     isSaving,
     hasChanges,
     generateSlug,
-    validateForm,
     checkSlugUniqueness,
     savePage,
     resetForm,

@@ -12,7 +12,7 @@
         <span class="text-sm text-surface-400 mr-2">
           {{ canvasBlocks.length }} block(s)
         </span>
-        <Button
+        <!-- <Button
           label="Clear"
           icon="pi pi-trash"
           outlined
@@ -22,7 +22,7 @@
           @click="clearCanvas"
         />
         <Button label="Preview" icon="pi pi-eye" outlined size="small" />
-        <Button label="Save" icon="pi pi-save" size="small" />
+        <Button label="Save" icon="pi pi-save" size="small" /> -->
       </div>
     </div>
 
@@ -202,11 +202,15 @@
               <!-- Block preview — scale trick: inner rendered at desktop width then scaled down -->
               <div
                 class="preview-clip bg-white dark:bg-surface-900 rounded-b-xl pointer-events-none"
+                :style="getPreviewClipStyle(element.instanceId)"
               >
-                <div class="preview-scale">
+                <div
+                  class="preview-scale"
+                  :ref="(node) => setPreviewScaleRef(element.instanceId, node)"
+                >
                   <component
                     :is="getBlockComponent(element.type)"
-                    v-bind="element.config"
+                    v-bind="getPreviewBindings(element)"
                   />
                 </div>
               </div>
@@ -229,7 +233,7 @@
 
       <!-- ═══════════════ RIGHT: Properties ═══════════════ -->
       <div
-        class="w-72 flex-shrink-0 border-l border-surface-200 dark:border-surface-700 flex flex-col overflow-hidden bg-surface-0 dark:bg-surface-900"
+        class="w-96 flex-shrink-0 border-l border-surface-200 dark:border-surface-700 flex flex-col overflow-hidden bg-surface-0 dark:bg-surface-900"
       >
         <div
           class="px-4 py-2 border-b border-surface-200 dark:border-surface-700 flex-shrink-0 flex items-center gap-2"
@@ -245,8 +249,12 @@
           <BlockPropertiesPanel
             v-if="selectedBlock"
             :block="selectedBlock"
-            :fieldMeta="selectedBlock.fieldMeta"
-            @update:config="onConfigUpdate"
+            :collections="props.collections"
+            :collections-loading="props.collectionsLoading"
+            :schemas="props.schemas"
+            @update:values="onBlockValuesUpdate"
+            @update:dataSource="onBlockDataSourceUpdate"
+            @fetch:collection="emit('fetch:collection', $event)"
           />
           <div
             v-else
@@ -265,43 +273,37 @@
 </template>
 
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue';
+// #region Imports
+import { defineAsyncComponent, nextTick } from 'vue';
+import type { ComponentPublicInstance } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import BlockPropertiesPanel from './BlockPropertiesPanel.vue';
+import heroImageDefault from '/demo/images/blocks/hero/hero-1.png';
+import type { BlockDefinition, PreviewBindingMode } from './pageDesign.types';
+import type {
+  CollectionSchemaWithCount,
+  CollectionSchema,
+} from '~/utils/types/admin/collection.types';
+import {
+  applyBlockValuesToSchema,
+  cloneBlockValues,
+  createBlockValues,
+  mergeBlockValues,
+  resolveBlockValues,
+  fieldBuilder,
+  predefinedOptions,
+  type PageDesignBlockSchema,
+  type PageDesignBlockValues,
+} from './pageDesignSchema';
+// #endregion Imports
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-type FieldType =
-  | 'text'
-  | 'textarea'
-  | 'number'
-  | 'checkbox'
-  | 'select'
-  | 'url'
-  | 'color'
-  | 'array';
-
-interface FieldMetaOverride {
-  type?: FieldType;
-  label?: string;
-  placeholder?: string;
-  options?: { label: string; value: any }[];
-  min?: number;
-  max?: number;
-}
-
-interface BlockDefinition {
-  id: string;
-  name: string;
-  type: string;
-  icon: string;
-  description: string;
-  category: string;
-  defaultConfig: Record<string, any>;
-  /** Optional explicit field metadata — overrides auto-inference in BlockPropertiesPanel */
-  fieldMeta?: Record<string, FieldMetaOverride>;
+// #region Types
+interface DataSource {
+  collection: string;
+  mode: 'list' | 'single';
+  fieldMappings: Record<string, string>;
 }
 
 interface CanvasBlock {
@@ -310,11 +312,40 @@ interface CanvasBlock {
   type: string;
   name: string;
   icon: string;
-  config: Record<string, any>;
-  fieldMeta?: Record<string, FieldMetaOverride>;
+  description: string;
+  category: string;
+  schema: PageDesignBlockSchema;
+  globalProps: Record<string, any>;
+  content: Record<string, any>;
+  previewMode: PreviewBindingMode;
+  dataSource?: DataSource;
 }
+// #endregion Types
 
-// ─── Block Component Map ──────────────────────────────────────────────────────
+// #region Constants
+const PREVIEW_SCALE = 0.62;
+
+const {
+  section,
+  textField,
+  textareaField,
+  numberField,
+  selectField,
+  radioField,
+  checkboxField,
+  toggleField,
+  urlField,
+  imageField,
+  richtextField,
+  multiselectField,
+  fileField,
+  dateField,
+  jsonField,
+  arrayField,
+  objectField,
+} = fieldBuilder;
+const { alignmentOptions, sizeOptions, buttonVariantOptions, columnOptions } =
+  predefinedOptions;
 
 const blockComponentMap: Record<
   string,
@@ -360,12 +391,44 @@ const blockComponentMap: Record<
   ),
 };
 
-const getBlockComponent = (type: string) => blockComponentMap[type] ?? null;
+const categories = [
+  { id: 'all', name: 'All' },
+  { id: 'layout', name: 'Layout' },
+  { id: 'content', name: 'Content' },
+  { id: 'media', name: 'Media' },
+  { id: 'interactive', name: 'Interactive' },
+];
+// #endregion Constants
 
-// ─── Available Blocks Library ─────────────────────────────────────────────────
+// #region Props & Emits
+const props = withDefaults(
+  defineProps<{
+    modelValue?: BlockDefinition[];
+    collectionCache?: Record<string, any[]>;
+    collections?: CollectionSchemaWithCount[];
+    collectionsLoading?: boolean;
+    schemas?: Record<string, CollectionSchema>;
+  }>(),
+  {
+    modelValue: () => [],
+    collectionCache: () => ({}),
+    collections: () => [],
+    collectionsLoading: false,
+    schemas: () => ({}),
+  },
+);
 
-const availableBlocks = ref<BlockDefinition[]>([
-  // Layout
+const emit = defineEmits<{
+  'update:modelValue': [value: BlockDefinition[]];
+  'fetch:collection': [slug: string];
+}>();
+// #endregion Props & Emits
+
+// #region Composables
+// #endregion Composables
+
+// #region State / Ref
+const availableBlocks = shallowRef<BlockDefinition[]>([
   {
     id: 'hero',
     name: 'Hero Section',
@@ -373,15 +436,36 @@ const availableBlocks = ref<BlockDefinition[]>([
     icon: 'pi pi-star',
     description: 'Large banner with heading and CTA',
     category: 'layout',
+    previewMode: 'flat',
     defaultConfig: {
-      title: 'Create the screens',
-      subtitle: 'your visitors deserve to see',
-      description:
-        'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-      primaryButtonLabel: 'Learn More',
-      secondaryButtonLabel: 'Live Demo',
-      image: '/demo/images/blocks/hero/hero-1.png',
-      imageAlt: 'Hero Image',
+      global: [],
+      content: [
+        section('hero', 'Hero Content', [
+          textField('title', 'Title', 'Create the screens', {
+            rules: { required: true, minLength: 3 },
+          }),
+          textField('subtitle', 'Subtitle', 'your visitors deserve to see'),
+          textareaField(
+            'description',
+            'Description',
+            'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+          ),
+          textField('primaryButtonLabel', 'Primary Button Label', 'Learn More'),
+          urlField('primaryButtonLink', 'Primary Button Link', ''),
+          textField(
+            'secondaryButtonLabel',
+            'Secondary Button Label',
+            'Live Demo',
+          ),
+          urlField('secondaryButtonLink', 'Secondary Button Link', ''),
+          // imageField('image', 'Image', '/demo/images/blocks/hero/hero-1.png'),
+          fileField('image', 'Hero Image', {
+            defaultValue: heroImageDefault,
+            accept: 'image/*',
+          }),
+          textField('imageAlt', 'Image Alt Text', 'Hero Image'),
+        ]),
+      ],
     },
   },
   {
@@ -391,7 +475,32 @@ const availableBlocks = ref<BlockDefinition[]>([
     icon: 'pi pi-table',
     description: 'Multi-column flexible layout',
     category: 'layout',
-    defaultConfig: { columnCount: 2, gap: '4' },
+    previewMode: 'config',
+    defaultConfig: {
+      global: [],
+      content: [
+        section('columns', 'Column Content', [
+          numberField('columnCount', 'Column Count', 2, {
+            rules: { min: 1, max: 4 },
+          }),
+          arrayField(
+            'columns',
+            'Columns',
+            [
+              richtextField(
+                'content',
+                'Column Content',
+                '<p>Column content</p>',
+              ),
+            ],
+            [
+              { content: '<p>Column 1 content</p>' },
+              { content: '<p>Column 2 content</p>' },
+            ],
+          ),
+        ]),
+      ],
+    },
   },
   {
     id: 'grid',
@@ -400,15 +509,47 @@ const availableBlocks = ref<BlockDefinition[]>([
     icon: 'pi pi-th-large',
     description: '2–4 column icon/card grid',
     category: 'layout',
+    previewMode: 'config',
     defaultConfig: {
-      columns: 3,
-      items: [
-        { title: 'Item 1', description: 'Description', icon: 'pi pi-star' },
-        { title: 'Item 2', description: 'Description', icon: 'pi pi-check' },
+      global: [],
+      content: [
+        section('grid', 'Grid Items', [
+          selectField(
+            'columns',
+            'Columns',
+            [
+              { label: '1', value: 1 },
+              { label: '2', value: 2 },
+              { label: '3', value: 3 },
+              { label: '4', value: 4 },
+            ],
+            3,
+          ),
+          arrayField(
+            'items',
+            'Items',
+            [
+              textField('title', 'Title', 'Item'),
+              textareaField('description', 'Description', 'Description'),
+              textField('icon', 'Icon Class', 'pi pi-star'),
+            ],
+            [
+              {
+                title: 'Item 1',
+                description: 'Description',
+                icon: 'pi pi-star',
+              },
+              {
+                title: 'Item 2',
+                description: 'Description',
+                icon: 'pi pi-check',
+              },
+            ],
+          ),
+        ]),
       ],
     },
   },
-  // Content
   {
     id: 'heading',
     name: 'Heading',
@@ -416,7 +557,27 @@ const availableBlocks = ref<BlockDefinition[]>([
     icon: 'pi pi-font',
     description: 'H1–H6 heading element',
     category: 'content',
-    defaultConfig: { text: 'Section Heading', level: 2, alignment: 'left' },
+    previewMode: 'config',
+    defaultConfig: {
+      global: [],
+      content: [
+        section('heading', 'Heading Content', [
+          textField('text', 'Text', 'Section Heading', {
+            rules: { required: true },
+          }),
+          radioField(
+            'level',
+            'Heading Level',
+            [1, 2, 3, 4, 5, 6].map((level) => ({
+              label: `H${level}`,
+              value: level,
+            })),
+            2,
+          ),
+          radioField('alignment', 'Alignment', alignmentOptions, 'left'),
+        ]),
+      ],
+    },
   },
   {
     id: 'text',
@@ -425,9 +586,19 @@ const availableBlocks = ref<BlockDefinition[]>([
     icon: 'pi pi-align-left',
     description: 'Rich paragraph content',
     category: 'content',
+    previewMode: 'config',
     defaultConfig: {
-      content: '<p>Your text content goes here.</p>',
-      alignment: 'left',
+      global: [],
+      content: [
+        section('text', 'Text Content', [
+          richtextField(
+            'content',
+            'Content',
+            '<p>Your text content goes here.</p>',
+          ),
+          radioField('alignment', 'Alignment', alignmentOptions, 'left'),
+        ]),
+      ],
     },
   },
   {
@@ -437,11 +608,29 @@ const availableBlocks = ref<BlockDefinition[]>([
     icon: 'pi pi-stop',
     description: 'CTA button element',
     category: 'content',
+    previewMode: 'config',
     defaultConfig: {
-      text: 'Click Me',
-      href: '#',
-      variant: 'primary',
-      size: 'medium',
+      global: [],
+      content: [
+        section('button', 'Button Content', [
+          textField('text', 'Label', 'Click Me', { rules: { required: true } }),
+          urlField('action', 'Action URL', '#'),
+          selectField('variant', 'Variant', buttonVariantOptions, 'primary'),
+          selectField(
+            'size',
+            'Size',
+            [
+              { label: 'Small', value: 'small' },
+              { label: 'Medium', value: 'medium' },
+              { label: 'Large', value: 'large' },
+            ],
+            'medium',
+          ),
+          checkboxField('outlined', 'Outlined', false),
+          checkboxField('raised', 'Raised', false),
+          radioField('alignment', 'Alignment', alignmentOptions, 'center'),
+        ]),
+      ],
     },
   },
   {
@@ -451,16 +640,85 @@ const availableBlocks = ref<BlockDefinition[]>([
     icon: 'pi pi-megaphone',
     description: 'Call-to-action section',
     category: 'content',
+    previewMode: 'flat',
     defaultConfig: {
-      title: 'Ready to get started?',
-      description: 'Join thousands of users today.',
-      actions: [
-        {
-          label: 'Sign Up',
-          variant: 'primary',
-          size: 'large',
-          class: '',
-        },
+      global: [
+        section('presentation', 'Presentation', [
+          selectField(
+            'variant',
+            'Variant',
+            [
+              { label: 'Default', value: 'default' },
+              { label: 'Naked', value: 'naked' },
+            ],
+            'default',
+          ),
+          toggleField('showDecorations', 'Show Decorations', true),
+        ]),
+      ],
+      content: [
+        section('main', 'Main Content', [
+          textField('title', 'Title', 'Ready to get started?'),
+          textareaField(
+            'description',
+            'Description',
+            'Join thousands of users today.',
+          ),
+          imageField('decorationLeft', 'Left Decoration', ''),
+          imageField('decorationRight', 'Right Decoration', ''),
+          textField('decorationLeftAlt', 'Left Decoration Alt', 'Decoration'),
+          textField('decorationRightAlt', 'Right Decoration Alt', 'Decoration'),
+          jsonField('backgroundComponents', 'Background Components JSON', []),
+          jsonField('contentComponents', 'Content Components JSON', []),
+          arrayField(
+            'actions',
+            'Actions',
+            [
+              textField('label', 'Label', 'Sign Up', {
+                rules: { required: true },
+              }),
+              urlField('url', 'URL', '/signup'),
+              selectField(
+                'target',
+                'Target',
+                [
+                  { label: 'Same Tab', value: '_self' },
+                  { label: 'New Tab', value: '_blank' },
+                ],
+                '_self',
+              ),
+              selectField(
+                'variant',
+                'Variant',
+                [
+                  { label: 'Primary', value: 'primary' },
+                  { label: 'Secondary', value: 'secondary' },
+                ],
+                'primary',
+              ),
+              selectField(
+                'size',
+                'Size',
+                [
+                  { label: 'Small', value: 'small' },
+                  { label: 'Large', value: 'large' },
+                ],
+                'large',
+              ),
+              textField('class', 'Custom Class', ''),
+            ],
+            [
+              {
+                label: 'Sign Up',
+                url: '/signup',
+                target: '_self',
+                variant: 'primary',
+                size: 'large',
+                class: '',
+              },
+            ],
+          ),
+        ]),
       ],
     },
   },
@@ -469,15 +727,55 @@ const availableBlocks = ref<BlockDefinition[]>([
     name: 'Feature',
     type: 'feature',
     icon: 'pi pi-bolt',
-    description: 'Icon + title + description',
+    description: 'Feature showcase grid',
     category: 'content',
+    previewMode: 'flat',
     defaultConfig: {
-      title: 'Feature Title',
-      description: 'Feature description here.',
-      icon: 'pi pi-check-circle',
+      global: [],
+      content: [
+        section('feature', 'Feature Content', [
+          textField('title', 'Title', 'One Product,'),
+          textField('titleHighlight', 'Title Highlight', 'Many Solutions'),
+          textareaField(
+            'subtitle',
+            'Subtitle',
+            'Ac turpis egestas maecenas pharetra convallis posuere morbi leo urna.',
+          ),
+          arrayField(
+            'features',
+            'Features',
+            [
+              textField('icon', 'Icon Class', 'pi pi-desktop'),
+              textField('title', 'Title', 'Built for Developers'),
+              textareaField(
+                'description',
+                'Description',
+                'Feature description',
+              ),
+            ],
+            [
+              {
+                icon: 'pi pi-desktop',
+                title: 'Built for Developers',
+                description:
+                  'Ship faster with UI blocks tailored to modern teams.',
+              },
+              {
+                icon: 'pi pi-lock',
+                title: 'End-to-End Encryption',
+                description: 'Protect user data across your full workflow.',
+              },
+              {
+                icon: 'pi pi-check-circle',
+                title: 'Easy to Use',
+                description: 'Balance flexibility with fast authoring.',
+              },
+            ],
+          ),
+        ]),
+      ],
     },
   },
-  // Media
   {
     id: 'image',
     name: 'Image',
@@ -485,12 +783,19 @@ const availableBlocks = ref<BlockDefinition[]>([
     icon: 'pi pi-image',
     description: 'Single image with caption',
     category: 'media',
+    previewMode: 'config',
     defaultConfig: {
-      imageUrl: '',
-      altText: 'Image',
-      caption: '',
-      size: 'medium',
-      alignment: 'center',
+      global: [],
+      content: [
+        section('image', 'Image Content', [
+          imageField('imageUrl', 'Image URL', 'https://placehold.co/800x400'),
+          fileField('imageFile', 'Image File', { accept: 'image/*' }),
+          textField('altText', 'Alt Text', 'Image'),
+          textareaField('caption', 'Caption', ''),
+          selectField('size', 'Size', sizeOptions, 'medium'),
+          radioField('alignment', 'Alignment', alignmentOptions, 'center'),
+        ]),
+      ],
     },
   },
   {
@@ -500,9 +805,19 @@ const availableBlocks = ref<BlockDefinition[]>([
     icon: 'pi pi-video',
     description: 'Embedded video player',
     category: 'media',
-    defaultConfig: { videoUrl: '', title: '', autoplay: false },
+    previewMode: 'config',
+    defaultConfig: {
+      global: [],
+      content: [
+        section('video', 'Video Content', [
+          urlField('videoUrl', 'Video URL', ''),
+          textField('title', 'Title', ''),
+          checkboxField('autoplay', 'Autoplay', false),
+          dateField('publishDate', 'Publish Date', null),
+        ]),
+      ],
+    },
   },
-  // Interactive
   {
     id: 'card',
     name: 'Card',
@@ -510,7 +825,16 @@ const availableBlocks = ref<BlockDefinition[]>([
     icon: 'pi pi-id-card',
     description: 'Content card component',
     category: 'interactive',
-    defaultConfig: { title: 'Card Title', content: 'Card content goes here.' },
+    previewMode: 'config',
+    defaultConfig: {
+      global: [],
+      content: [
+        section('card', 'Card Content', [
+          textField('title', 'Title', 'Card Title'),
+          textareaField('content', 'Content', 'Card content goes here.'),
+        ]),
+      ],
+    },
   },
   {
     id: 'testimonial',
@@ -519,10 +843,16 @@ const availableBlocks = ref<BlockDefinition[]>([
     icon: 'pi pi-comment',
     description: 'Single quote + author',
     category: 'interactive',
+    previewMode: 'config',
     defaultConfig: {
-      quote: '"This product is amazing!"',
-      author: 'John Doe',
-      position: 'CEO, Company',
+      global: [],
+      content: [
+        section('testimonial', 'Testimonial Content', [
+          textareaField('quote', 'Quote', '"This product is amazing!"'),
+          textField('author', 'Author', 'John Doe'),
+          textField('position', 'Position', 'CEO, Company'),
+        ]),
+      ],
     },
   },
   {
@@ -530,9 +860,65 @@ const availableBlocks = ref<BlockDefinition[]>([
     name: 'Testimonials',
     type: 'testimonials',
     icon: 'pi pi-comments',
-    description: 'Multiple testimonials carousel',
+    description: 'Multiple testimonials grid',
     category: 'interactive',
-    defaultConfig: {},
+    previewMode: 'flat',
+    defaultConfig: {
+      global: [],
+      content: [
+        section('testimonials', 'Testimonials Content', [
+          textField(
+            'titlePrefix',
+            'Title Prefix',
+            'Join thousands of productive',
+          ),
+          textField('titleHighlight', 'Title Highlight', 'developers'),
+          textareaField(
+            'description',
+            'Description',
+            'See how developers are transforming their coding workflow and achieving more with our AI-powered platform.',
+          ),
+          selectField('columns', 'Columns', columnOptions, '3'),
+          imageField('headlineImage', 'Headline Image', ''),
+          textField(
+            'headlineImageAlt',
+            'Headline Image Alt',
+            'Decorative element',
+          ),
+          arrayField(
+            'testimonials',
+            'Testimonials',
+            [
+              textareaField('quote', 'Quote', 'Great product'),
+              objectField('user', 'User', [
+                textField('name', 'Name', 'Sarah Moriceau'),
+                textField('role', 'Role', 'Brand Designer'),
+                imageField('avatar', 'Avatar', ''),
+              ]),
+            ],
+            [
+              {
+                quote: 'Since using this tool, my productivity has doubled.',
+                user: {
+                  name: 'Sarah Moriceau',
+                  role: 'Brand Designer',
+                  avatar: '',
+                },
+              },
+              {
+                quote:
+                  'Game-changer for our team. It reduced interruptions dramatically.',
+                user: {
+                  name: 'Sébastien Chopin',
+                  role: 'Lead Software Engineer',
+                  avatar: '',
+                },
+              },
+            ],
+          ),
+        ]),
+      ],
+    },
   },
   {
     id: 'form',
@@ -541,7 +927,59 @@ const availableBlocks = ref<BlockDefinition[]>([
     icon: 'pi pi-envelope',
     description: 'Contact / lead capture form',
     category: 'interactive',
-    defaultConfig: { title: 'Contact Us', submitText: 'Send Message' },
+    previewMode: 'config',
+    defaultConfig: {
+      global: [],
+      content: [
+        section('form', 'Form Content', [
+          textField('title', 'Title', 'Contact Us'),
+          textField('submitText', 'Submit Button Label', 'Send Message'),
+          arrayField(
+            'fields',
+            'Form Fields',
+            [
+              textField('name', 'Field Name', 'name'),
+              textField('label', 'Label', 'Name'),
+              selectField(
+                'type',
+                'Type',
+                [
+                  { label: 'Text', value: 'text' },
+                  { label: 'Email', value: 'email' },
+                  { label: 'Textarea', value: 'textarea' },
+                ],
+                'text',
+              ),
+              textField('placeholder', 'Placeholder', ''),
+              checkboxField('required', 'Required', true),
+            ],
+            [
+              {
+                name: 'name',
+                label: 'Name',
+                type: 'text',
+                placeholder: 'Your name',
+                required: true,
+              },
+              {
+                name: 'email',
+                label: 'Email',
+                type: 'email',
+                placeholder: 'Your email',
+                required: true,
+              },
+              {
+                name: 'message',
+                label: 'Message',
+                type: 'textarea',
+                placeholder: 'How can we help?',
+                required: true,
+              },
+            ],
+          ),
+        ]),
+      ],
+    },
   },
   {
     id: 'content-listing',
@@ -550,7 +988,84 @@ const availableBlocks = ref<BlockDefinition[]>([
     icon: 'pi pi-list',
     description: 'Dynamic content feed',
     category: 'interactive',
-    defaultConfig: { title: 'Latest Articles', itemsPerRow: 3, maxItems: 6 },
+    previewMode: 'flat',
+    defaultConfig: {
+      global: [],
+      content: [
+        section('listing', 'Listing Configuration', [
+          objectField('dataSource', 'Data Source', [
+            selectField(
+              'type',
+              'Source Type',
+              [
+                { label: 'Static', value: 'static' },
+                { label: 'API', value: 'api' },
+                { label: 'CMS', value: 'cms' },
+              ],
+              'static',
+            ),
+            textField('endpoint', 'Endpoint', ''),
+            jsonField('params', 'Params JSON', {}),
+            jsonField('staticData', 'Static Data JSON', [
+              { id: 1, title: 'First Article', category: 'News' },
+              { id: 2, title: 'Second Article', category: 'Guides' },
+            ]),
+          ]),
+          jsonField('itemComponent', 'Item Component JSON', {
+            name: 'Text Card',
+            component: 'CardBlock',
+            props: {
+              title: '{{title}}',
+              content: '{{category}}',
+            },
+          }),
+          jsonField('fieldMapping', 'Field Mapping JSON', {}),
+          selectField(
+            'layout',
+            'Layout',
+            [
+              { label: 'Grid', value: 'grid' },
+              { label: 'Flex', value: 'flex' },
+            ],
+            'grid',
+          ),
+          selectField('columns', 'Columns', columnOptions, '3'),
+          selectField(
+            'gap',
+            'Gap',
+            [
+              { label: 'Small', value: 'sm' },
+              { label: 'Medium', value: 'md' },
+              { label: 'Large', value: 'lg' },
+            ],
+            'lg',
+          ),
+          objectField('pagination', 'Pagination', [
+            checkboxField('enabled', 'Enabled', false),
+            numberField('perPage', 'Per Page', 12, { rules: { min: 1 } }),
+            selectField(
+              'type',
+              'Pagination Type',
+              [
+                { label: 'Numbered', value: 'numbered' },
+                { label: 'Load More', value: 'load-more' },
+                { label: 'Infinite Scroll', value: 'infinite-scroll' },
+              ],
+              'numbered',
+            ),
+          ]),
+          objectField('filters', 'Filters', [
+            checkboxField('enabled', 'Enabled', false),
+            multiselectField(
+              'fields',
+              'Filter Fields',
+              [{ label: 'Category', value: 'category' }],
+              [],
+            ),
+          ]),
+        ]),
+      ],
+    },
   },
   {
     id: 'grid-view',
@@ -559,54 +1074,76 @@ const availableBlocks = ref<BlockDefinition[]>([
     icon: 'pi pi-objects-column',
     description: 'Responsive grid card view',
     category: 'interactive',
+    previewMode: 'flat',
     defaultConfig: {
-      title: 'Grid View',
-      description: 'Dynamic grid layout with flexible content',
-      columns: '3',
-      decorativeImage: '',
-      decorativeImageAlt: 'Decorative element',
-      items: [
-        {
-          highlight: false,
-          highlightLabel: '',
-        },
+      global: [],
+      content: [
+        section('gridView', 'Grid View Content', [
+          textField('title', 'Title', 'Grid View'),
+          textareaField(
+            'description',
+            'Description',
+            'Dynamic grid layout with flexible content',
+          ),
+          selectField('columns', 'Columns', columnOptions, '3'),
+          imageField('decorativeImage', 'Decorative Image', ''),
+          textField(
+            'decorativeImageAlt',
+            'Decorative Image Alt',
+            'Decorative element',
+          ),
+          arrayField(
+            'items',
+            'Items',
+            [
+              // checkboxField('highlight', 'Highlight', false),
+              // textField('highlightLabel', 'Highlight Label', ''),
+              // jsonField('badgeComponents', 'Badge Components JSON', []),
+              // jsonField('headerComponents', 'Header Components JSON', []),
+              // jsonField('contentComponents', 'Content Components JSON', []),
+              // jsonField('footerComponents', 'Footer Components JSON', []),
+              textField('title', 'Card Title', 'Item Title'),
+              textareaField(
+                'description',
+                'Card Description',
+                'Item description',
+              ),
+              imageField('image', 'Card Image', ''),
+              textField('imageAlt', 'Card Image Alt', 'Item image'),
+            ],
+            [
+              {
+                highlight: false,
+                highlightLabel: '',
+                badgeComponents: '[]',
+                headerComponents: '[]',
+                contentComponents: '[]',
+                footerComponents: '[]',
+              },
+            ],
+          ),
+        ]),
       ],
-    },
-    fieldMeta: {
-      columns: {
-        type: 'select',
-        options: [
-          { label: '1 Column', value: '1' },
-          { label: '2 Columns', value: '2' },
-          { label: '3 Columns', value: '3' },
-          { label: '4 Columns', value: '4' },
-        ],
-      },
-      decorativeImage: {
-        type: 'url',
-        placeholder: 'https://example.com/image.png',
-      },
-      decorativeImageAlt: {
-        type: 'text',
-        placeholder: 'Alt text for decorative image',
-      },
     },
   },
 ]);
-
-// ─── Category Filter ──────────────────────────────────────────────────────────
-
-const categories = [
-  { id: 'all', name: 'All' },
-  { id: 'layout', name: 'Layout' },
-  { id: 'content', name: 'Content' },
-  { id: 'media', name: 'Media' },
-  { id: 'interactive', name: 'Interactive' },
-];
-
 const selectedCategory = ref('all');
 const searchQuery = ref('');
+const canvasBlocks = ref<CanvasBlock[]>([]);
+const selectedBlockId = ref<string | null>(null);
+const previewHeights = ref<Record<string, number>>({});
+const previewScaleElements = new Map<string, HTMLElement>();
+const previewScaleObservers = new Map<string, ResizeObserver>();
+let isHydratingFromModel = false;
+let skipNextModelSync = false;
+// #endregion State / Ref
 
+//#region Computed
+const selectedBlock = computed(
+  () =>
+    canvasBlocks.value.find((b) => b.instanceId === selectedBlockId.value) ??
+    null,
+);
 const filteredBlocks = computed(() => {
   let list = availableBlocks.value;
   if (selectedCategory.value !== 'all') {
@@ -622,37 +1159,191 @@ const filteredBlocks = computed(() => {
   }
   return list;
 });
+//#endregion Computed
 
-// ─── Canvas State ─────────────────────────────────────────────────────────────
-
-const canvasBlocks = ref<CanvasBlock[]>([]);
-const selectedBlockId = ref<string | null>(null);
-
-const selectedBlock = computed(
-  () =>
-    canvasBlocks.value.find((b) => b.instanceId === selectedBlockId.value) ??
-    null,
-);
-
-// ─── Clone (left → canvas) ────────────────────────────────────────────────────
-
-const cloneBlock = (original: BlockDefinition): CanvasBlock => ({
-  instanceId: `${original.type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-  id: original.id,
-  type: original.type,
-  name: original.name,
-  icon: original.icon,
-  config: { ...original.defaultConfig },
-  fieldMeta: original.fieldMeta,
+// #region Lifecycle Hooks
+onBeforeUnmount(() => {
+  Array.from(previewScaleObservers.keys()).forEach((instanceId) => {
+    teardownPreviewScaleRef(instanceId);
+  });
 });
+// #endregion Lifecycle Hooks
+
+// #region Methods / Functions
+
+const getBlockComponent = (type: string) => blockComponentMap[type] ?? null;
+
+const findBlockDefinition = (
+  block: Partial<BlockDefinition>,
+): BlockDefinition | undefined => {
+  return availableBlocks.value.find(
+    (definition) =>
+      definition.id === block.id ||
+      definition.type === block.type ||
+      definition.name === block.name,
+  );
+};
+
+const createCanvasBlockFromDefinition = (
+  definition: BlockDefinition,
+  overrides: Partial<CanvasBlock> = {},
+): CanvasBlock => {
+  const initialValues = createBlockValues(definition.defaultConfig);
+
+  return {
+    instanceId:
+      overrides.instanceId ||
+      `${definition.type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    id: definition.id,
+    type: definition.type,
+    name: definition.name,
+    icon: definition.icon,
+    description: definition.description,
+    category: definition.category,
+    schema: definition.defaultConfig,
+    globalProps: {
+      ...initialValues.globalProps,
+      ...(overrides.globalProps ?? {}),
+    },
+    content: {
+      ...initialValues.content,
+      ...(overrides.content ?? {}),
+    },
+    previewMode: definition.previewMode,
+    dataSource: overrides.dataSource,
+  };
+};
+
+const serializeCanvasBlocks = (blocks: CanvasBlock[]): BlockDefinition[] => {
+  return blocks.map((block) => {
+    const values = cloneBlockValues({
+      globalProps: block.globalProps,
+      content: block.content,
+    });
+
+    return {
+      id: block.id,
+      name: block.name,
+      type: block.type,
+      description: block.description,
+      category: block.category,
+      icon: block.icon,
+      defaultConfig: applyBlockValuesToSchema(block.schema, values),
+      previewMode: block.previewMode,
+      ...(block.dataSource ? { dataSource: block.dataSource } : {}),
+    };
+  });
+};
+
+const emitModelValue = () => {
+  skipNextModelSync = true;
+  emit('update:modelValue', serializeCanvasBlocks(canvasBlocks.value));
+};
+
+const syncCanvasBlocksFromModel = (blocks: BlockDefinition[]) => {
+  isHydratingFromModel = true;
+
+  canvasBlocks.value.forEach((block) =>
+    teardownPreviewScaleRef(block.instanceId),
+  );
+
+  const nextBlocks = blocks
+    .map((block, index) => {
+      const definition = findBlockDefinition(block) ?? block;
+      const blockValues = createBlockValues(block.defaultConfig);
+
+      return createCanvasBlockFromDefinition(definition, {
+        instanceId: `${definition.type}-${index}-${Math.random().toString(36).slice(2, 7)}`,
+        globalProps: blockValues.globalProps,
+        content: blockValues.content,
+        dataSource: (block as any).dataSource,
+      });
+    })
+    .filter(Boolean) as CanvasBlock[];
+
+  canvasBlocks.value = nextBlocks;
+
+  if (!nextBlocks.some((block) => block.instanceId === selectedBlockId.value)) {
+    selectedBlockId.value = nextBlocks[0]?.instanceId ?? null;
+  }
+
+  nextTick(() => {
+    nextBlocks.forEach((block) => updatePreviewHeight(block.instanceId));
+    isHydratingFromModel = false;
+  });
+};
+
+const updatePreviewHeight = (instanceId: string) => {
+  const element = previewScaleElements.get(instanceId);
+  if (!element) return;
+
+  const measuredHeight = Math.ceil(element.scrollHeight * PREVIEW_SCALE);
+  previewHeights.value = {
+    ...previewHeights.value,
+    [instanceId]: measuredHeight,
+  };
+};
+
+const teardownPreviewScaleRef = (instanceId: string) => {
+  const observer = previewScaleObservers.get(instanceId);
+  if (observer) {
+    observer.disconnect();
+    previewScaleObservers.delete(instanceId);
+  }
+
+  previewScaleElements.delete(instanceId);
+
+  const { [instanceId]: _removedHeight, ...remainingHeights } =
+    previewHeights.value;
+  previewHeights.value = remainingHeights;
+};
+
+const setPreviewScaleRef = (
+  instanceId: string,
+  node: Element | ComponentPublicInstance | null,
+) => {
+  const resolvedNode =
+    node instanceof HTMLElement
+      ? node
+      : node && '$el' in node && node.$el instanceof HTMLElement
+        ? node.$el
+        : null;
+
+  if (!resolvedNode) {
+    teardownPreviewScaleRef(instanceId);
+    return;
+  }
+
+  const currentElement = previewScaleElements.get(instanceId);
+  if (currentElement === resolvedNode) return;
+
+  teardownPreviewScaleRef(instanceId);
+  previewScaleElements.set(instanceId, resolvedNode);
+
+  const observer = new ResizeObserver(() => updatePreviewHeight(instanceId));
+  observer.observe(resolvedNode);
+  previewScaleObservers.set(instanceId, observer);
+
+  nextTick(() => updatePreviewHeight(instanceId));
+};
+
+const getPreviewClipStyle = (instanceId: string) => {
+  const height = previewHeights.value[instanceId];
+  if (!height) return undefined;
+
+  return {
+    height: `${height}px`,
+  };
+};
+
+const cloneBlock = (original: BlockDefinition): CanvasBlock => {
+  return createCanvasBlockFromDefinition(original);
+};
 
 const onBlockAdded = (evt: any) => {
-  // Auto-select newly added block
   const added = canvasBlocks.value[evt.newIndex];
   if (added) selectedBlockId.value = added.instanceId;
 };
-
-// ─── Canvas Actions ───────────────────────────────────────────────────────────
 
 const selectBlock = (block: CanvasBlock) => {
   selectedBlockId.value = block.instanceId;
@@ -662,6 +1353,9 @@ const removeBlock = (index: number) => {
   const removed = canvasBlocks.value[index];
   if (selectedBlockId.value === removed?.instanceId) {
     selectedBlockId.value = null;
+  }
+  if (removed) {
+    teardownPreviewScaleRef(removed.instanceId);
   }
   canvasBlocks.value.splice(index, 1);
 };
@@ -675,30 +1369,101 @@ const moveBlock = (index: number, direction: -1 | 1) => {
 
 const duplicateBlock = (index: number) => {
   const original = canvasBlocks.value[index];
+  const duplicatedValues = cloneBlockValues({
+    globalProps: original.globalProps,
+    content: original.content,
+  });
   const copy: CanvasBlock = {
     ...original,
     instanceId: `${original.type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    config: { ...original.config },
+    globalProps: duplicatedValues.globalProps,
+    content: duplicatedValues.content,
   };
   canvasBlocks.value.splice(index + 1, 0, copy);
   selectedBlockId.value = copy.instanceId;
 };
 
 const clearCanvas = () => {
+  canvasBlocks.value.forEach((block) =>
+    teardownPreviewScaleRef(block.instanceId),
+  );
   canvasBlocks.value = [];
   selectedBlockId.value = null;
 };
 
-// ─── Property Update ──────────────────────────────────────────────────────────
-
-const onConfigUpdate = (newConfig: Record<string, any>) => {
-  const block = canvasBlocks.value.find(
-    (b) => b.instanceId === selectedBlockId.value,
+const getPreviewBindings = (block: CanvasBlock): Record<string, any> => {
+  const merged = mergeBlockValues(
+    resolveBlockValues(block.schema, {
+      globalProps: block.globalProps,
+      content: block.content,
+    }),
   );
-  if (block) {
-    block.config = { ...newConfig };
+
+  if (block.previewMode === 'config') {
+    return { config: merged };
   }
+
+  if (block.dataSource?.collection) {
+    const allItems = props.collectionCache[block.dataSource.collection] ?? [];
+    const collectionItems =
+      block.dataSource.mode === 'single' ? allItems.slice(0, 1) : allItems;
+    return { ...merged, dataSource: block.dataSource, collectionItems };
+    // return {
+    //   ...merged,
+    //   dataSource: block.dataSource,
+    //   collectionItems: props.collectionCache[block.dataSource.collection] ?? [],
+    // };
+  }
+
+  return merged;
 };
+
+const onBlockValuesUpdate = (newValues: PageDesignBlockValues) => {
+  const block = canvasBlocks.value.find(
+    (candidate) => candidate.instanceId === selectedBlockId.value,
+  );
+
+  if (!block) return;
+
+  block.globalProps = cloneBlockValues(newValues).globalProps;
+  block.content = cloneBlockValues(newValues).content;
+
+  nextTick(() => updatePreviewHeight(block.instanceId));
+};
+
+const onBlockDataSourceUpdate = (dataSource: DataSource | undefined) => {
+  const block = canvasBlocks.value.find(
+    (candidate) => candidate.instanceId === selectedBlockId.value,
+  );
+  if (!block) return;
+  block.dataSource = dataSource;
+  // deep canvasBlocks watcher handles emitModelValue — no explicit call needed
+};
+// #endregion Methods / Functions
+
+// #region Watcher
+watch(
+  () => props.modelValue,
+  (blocks) => {
+    if (skipNextModelSync) {
+      skipNextModelSync = false;
+      return;
+    }
+
+    syncCanvasBlocksFromModel(blocks ?? []);
+  },
+  { immediate: true, deep: true },
+);
+
+watch(
+  canvasBlocks,
+  () => {
+    if (isHydratingFromModel) return;
+    emitModelValue();
+  },
+  { deep: true },
+);
+// #endregion Watcher
 </script>
 
 <style scoped>
@@ -719,18 +1484,14 @@ const onConfigUpdate = (newConfig: Record<string, any>) => {
 .preview-clip {
   --preview-scale: 0.62;
   overflow: hidden;
-  /* height menyusut sesuai scale sehingga card tidak terlalu tinggi */
-  display: grid;
-  grid-template-rows: 1fr;
+  display: flow-root;
 }
 
 .preview-scale {
+  display: block;
   transform: scale(var(--preview-scale));
   transform-origin: top left;
   width: calc(100% / var(--preview-scale));
-  height: 100%;
-  /* kompensasi tinggi setelah di-scale agar tidak ada ruang putih bawah */
-  margin-bottom: calc((var(--preview-scale) - 1) * 100%);
 }
 
 :deep(.ghost-block) {

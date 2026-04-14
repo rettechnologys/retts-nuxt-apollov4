@@ -10,7 +10,7 @@
     <div
       class="absolute inset-0 @3xs:absolute! lg:hidden"
       :style="{
-        backgroundImage: `url(${image})`,
+        backgroundImage: `url(${resolvedImageSource})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         opacity: '0.60',
@@ -55,7 +55,7 @@
     <!-- Regular Image for large screens -->
     <BaseLayout class="overflow-hidden hidden lg:block relative">
       <img
-        :src="image"
+        :src="resolvedImageSource"
         :alt="imageAlt"
         class="ml-auto block h-full w-full object-cover"
         style="clip-path: polygon(8% 0, 100% 0%, 100% 100%, 0 100%)"
@@ -65,12 +65,11 @@
 </template>
 
 <script setup lang="ts">
-import {
-  createStyleObject,
-  cssPropertiesDefault,
-  cssPropertiesObject,
-} from '~/utils/types/styleValue';
+// #region Imports
+import { useResolvedMediaSource } from '~/composables/useResolvedMediaSource';
+// #endregion Imports
 
+// #region Types
 interface Props {
   title?: string;
   subtitle?: string;
@@ -79,10 +78,17 @@ interface Props {
   primaryButtonLink?: string;
   secondaryButtonLabel?: string;
   secondaryButtonLink?: string;
-  image?: string;
+  image?: string | File;
   imageAlt?: string;
+  calledFromPreview?: boolean;
 }
+// #endregion Types
 
+// #region Constants
+const HERO_IMAGE_DEFAULT = '/demo/images/blocks/hero/hero-1.png';
+// #endregion Constants
+
+// #region Props & Emits
 const props = withDefaults(defineProps<Props>(), {
   title: 'Create the screens',
   subtitle: 'your visitors deserve to see',
@@ -90,10 +96,25 @@ const props = withDefaults(defineProps<Props>(), {
     'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
   primaryButtonLabel: 'Learn More',
   secondaryButtonLabel: 'Live Demo',
-  image: '/demo/images/blocks/hero/hero-1.png',
+  image: HERO_IMAGE_DEFAULT,
   imageAlt: 'Hero Image',
 });
+// #endregion Props & Emits
 
+// #region Composables
+const { resolvedSource: resolvedImageSource } = useResolvedMediaSource(
+  () => props.image,
+  HERO_IMAGE_DEFAULT,
+);
+// #endregion Composables
+
+// #region State / Ref
+// #endregion State / Ref
+
+// #region Lifecycle Hooks
+// #endregion Lifecycle Hooks
+
+// #region Methods / Functions
 const handlePrimaryClick = () => {
   if (props.primaryButtonLink) {
     navigateTo(props.primaryButtonLink);
@@ -105,6 +126,17 @@ const handleSecondaryClick = () => {
     navigateTo(props.secondaryButtonLink);
   }
 };
+// #endregion Methods / Functions
+
+// #region Watcher
+watch(
+  () => props,
+  (newVal) => {
+    console.log('HeroSection_2 props updated:', newVal);
+  },
+  { deep: true },
+);
+// #endregion Watcher
 </script>
 
 <style scoped></style>
