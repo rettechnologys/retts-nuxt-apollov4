@@ -12,7 +12,10 @@
     "postinstall": "nuxt prepare",
     "generate-api:dev": "npx swagger-typescript-api generate --modular --module-name-first-tag -p http://localhost:4000/api-docs-json -t ./api-templates/base -o ./modules/data/internal/data-source && prettier --write core/modules/data/internal/data-source && prettier --write ./modules/data/internal/data-source && npm run type-check",
     "generate-api2test:dev": "npx swagger-typescript-api generate --extract-request-params --extract-request-body --extract-response-body --modular --module-name-first-tag -p http://localhost:4000/api-docs-json -t ./api-templates/base -o ./modules/data/external/data-source",
-    "generate-api:dev-live": "npx swagger-typescript-api generate --modular --module-name-first-tag -p https://retts-webapp-api-dev.retts.cloud/api-docs-json -t ./api-templates/base -o ./modules/data/internal/data-source && prettier --write ./modules/data/internal/data-source"
+    "generate-api:dev-live": "npx swagger-typescript-api generate --modular --module-name-first-tag -p https://retts-webapp-api-dev.retts.cloud/api-docs-json -t ./api-templates/base -o ./modules/data/internal/data-source && prettier --write ./modules/data/internal/data-source",
+    "drizzle:generate": "drizzle-kit generate --config=drizzle.config.ts",
+    "drizzle:push": "drizzle-kit push --config=drizzle.config.ts",
+    "drizzle:pull": "drizzle-kit pull --config=drizzle.config.ts"
   },
   "dependencies": {
     "@nuxt/eslint": "^1.10.0",
@@ -31,7 +34,9 @@
     "@unhead/vue": "^2.0.19",
     "@vueuse/core": "^14.1.0",
     "axios": "^1.13.2",
+    "better-sqlite3": "^12.9.0",
     "class-transformer": "^0.5.1",
+    "drizzle-orm": "^0.45.2",
     "eslint": "^9.39.1",
     "json2typescript": "^1.6.1",
     "juice": "^11.0.3",
@@ -55,8 +60,10 @@
     "vuedraggable": "^4.1.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/lodash": "^4.17.21",
     "@types/node": "^25.5.2",
+    "drizzle-kit": "^0.31.10",
     "prettier": "^3.7.3",
     "typescript": "^5.9.3",
     "vue-tsc": "^3.1.5"

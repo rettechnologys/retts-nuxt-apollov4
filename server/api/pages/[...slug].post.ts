@@ -10,6 +10,8 @@ import {
   getCollectionSchemaStore,
   getItemsForCollection,
 } from '~~/server/utils/collectionStore';
+import { drizzleDb } from '../../db/client';
+import { pages } from '../../db/schema';
 
 type PreviewBindingMode = 'config' | 'flat';
 type DemoPageStatus = 'draft' | 'published' | 'scheduled' | 'archived';
@@ -82,6 +84,7 @@ interface DemoPageSettings {
   showInMenu: boolean;
   menuOrder: number;
   parentPageId: number | null;
+  parentSlug: string | null;
   customCSS: string;
   customJS: string;
 }
@@ -182,19 +185,6 @@ type DemoMultipartPart = {
 };
 
 const FILE_TOKEN_KEY = '__pageFormFileToken';
-
-const getDemoPageStore = (): DemoPageStore => {
-  const globalState = globalThis as typeof globalThis & {
-    __demoPageStore?: DemoPageStore;
-  };
-
-  if (!globalState.__demoPageStore) {
-    globalState.__demoPageStore = new Map();
-  }
-
-  return globalState.__demoPageStore;
-};
-
 const cloneValue = <T>(value: T): T => {
   if (value === undefined || value === null) return value;
 
@@ -481,8 +471,9 @@ const normalizeBlock = (
 
 const buildPageConfigFromPayload = (
   payload: DemoPagePayload,
+  finalSlug?: string,
 ): DemoPageConfig => {
-  const slugPath = normalizeSlugPath(payload.slug);
+  const slugPath = finalSlug ?? normalizeSlugPath(payload.slug);
 
   return {
     id: payload.id ?? slugPath,
@@ -531,7 +522,7 @@ export default defineEventHandler(async (event) => {
   const slugPath = normalizeSlugPath(
     Array.isArray(rawSlug) ? rawSlug.join('/') : rawSlug,
   );
-  const pageStore = getDemoPageStore();
+  // persistence moved to SQLite DB (see server/db/client.ts)
 
   console.log(`[API Pages] ${method}:`, slugPath);
 
@@ -561,21 +552,62 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    const normalizedSlug = normalizeSlugPath(payload.slug);
+    const parentSlug = payload.settings?.parentSlug
+      ? normalizeSlugPath(payload.settings.parentSlug)
+      : null;
+    const normalizedSlug = parentSlug
+      ? `${parentSlug}/${normalizeSlugPath(payload.slug)}`
+      : normalizeSlugPath(payload.slug);
     const pageConfig = await serializeResponseValue(
-      buildPageConfigFromPayload(payload),
+      buildPageConfigFromPayload(payload, normalizedSlug),
     );
 
-    pageStore.set(normalizedSlug, {
-      payload: cloneValue(payload),
-      pageConfig,
-      savedAt: new Date().toISOString(),
-    });
+    // Persist page into SQLite via Drizzle
+    try {
+      const payloadStr = JSON.stringify(cloneValue(payload));
+      const pageConfigStr = JSON.stringify(pageConfig);
+      const settingsStr = JSON.stringify(payload.settings ?? {});
+      const now = new Date().toISOString();
 
-    return {
-      success: true,
-      data: pageConfig,
-    };
+      await drizzleDb
+        .insert(pages)
+        .values({
+          slug: normalizedSlug,
+          title: payload.title,
+          status: payload.status,
+          type: payload.type,
+          payload: payloadStr,
+          page_config: pageConfigStr,
+          settings: settingsStr,
+          published_at: payload.publishedAt ?? null,
+          scheduled_at: payload.scheduledAt ?? null,
+          saved_at: now,
+          created_at: now,
+        })
+        .onConflictDoUpdate({
+          target: pages.slug,
+          set: {
+            title: payload.title,
+            status: payload.status,
+            type: payload.type,
+            payload: payloadStr,
+            page_config: pageConfigStr,
+            settings: settingsStr,
+            published_at: payload.publishedAt ?? null,
+            scheduled_at: payload.scheduledAt ?? null,
+            saved_at: now,
+          },
+        });
+
+      return {
+        success: true,
+        data: pageConfig,
+      };
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to persist page:', err);
+      throw createError({ statusCode: 500, message: 'Failed to save page' });
+    }
   }
 
   // if (method === 'GET') {

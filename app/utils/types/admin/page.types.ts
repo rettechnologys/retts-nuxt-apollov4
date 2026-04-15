@@ -22,7 +22,7 @@ export interface PageSettings {
   allowComments: boolean;
   showInMenu: boolean;
   menuOrder: number;
-  parentPageId: number | null;
+  parentSlug: string | null;
   customCSS: string;
   customJS: string;
 }
@@ -34,8 +34,9 @@ export interface PageFormData {
   status: 'draft' | 'published' | 'scheduled' | 'archived';
   type: string;
 
-  // Content - using new block structure
+  // Blocks - using new block structure
   blocks: BlockDefinition[];
+  // Deprecated: legacy flat block config (for backward compatibility) - to be removed in future
   content?: BlockConfig;
 
   // SEO

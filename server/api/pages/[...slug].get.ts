@@ -3,6 +3,9 @@ import {
   getCollectionSchemaStore,
   getItemsForCollection,
 } from '~~/server/utils/collectionStore';
+import { drizzleDb } from '../../db/client';
+import { pages } from '../../db/schema';
+import { eq } from 'drizzle-orm';
 
 type PreviewBindingMode = 'config' | 'flat';
 type DemoPageStatus = 'draft' | 'published' | 'scheduled' | 'archived';
@@ -166,18 +169,6 @@ interface DemoStoredPage {
 }
 
 type DemoPageStore = Map<string, DemoStoredPage>;
-
-const getDemoPageStore = (): DemoPageStore => {
-  const globalState = globalThis as typeof globalThis & {
-    __demoPageStore?: DemoPageStore;
-  };
-
-  if (!globalState.__demoPageStore) {
-    globalState.__demoPageStore = new Map();
-  }
-
-  return globalState.__demoPageStore;
-};
 
 const cloneValue = <T>(value: T): T => {
   if (value === undefined || value === null) return value;
@@ -391,8 +382,6 @@ export default defineEventHandler(async (event) => {
   const slugPath = normalizeSlugPath(
     Array.isArray(rawSlug) ? rawSlug.join('/') : rawSlug,
   );
-  const pageStore = getDemoPageStore();
-
   console.log(`[API Pages] ${method}:`, slugPath);
 
   // if (method === 'POST') {
@@ -432,20 +421,36 @@ export default defineEventHandler(async (event) => {
   // }
 
   if (method === 'GET') {
-    const storedPage = pageStore.get(slugPath);
-    console.log(`Page config for "${slugPath}":`, storedPage?.pageConfig); // Debug log
-    if (storedPage) {
-      return storedPage.pageConfig;
-    }
+    // Try to read persisted page from DB
+    try {
+      const rows = await drizzleDb
+        .select()
+        .from(pages)
+        .where(eq(pages.slug, slugPath));
+      const row = rows && rows.length > 0 ? rows[0] : undefined;
+      if (row && row.page_config) {
+        try {
+          return JSON.parse(row.page_config);
+        } catch {
+          // Fallback to parsing payload when page_config is invalid
+          const payload = row.payload ? JSON.parse(row.payload) : undefined;
+          if (payload) return buildPageConfigFromPayload(payload);
+        }
+      }
 
-    if (slugPath === 'home') {
-      return createFallbackHomePage();
-    }
+      if (slugPath === 'home') return createFallbackHomePage();
 
-    throw createError({
-      statusCode: 404,
-      message: `Page not found: ${slugPath}`,
-    });
+      throw createError({
+        statusCode: 404,
+        message: `Page not found: ${slugPath}`,
+      });
+    } catch (err) {
+      // DB read failed — no in-memory fallback. Return default home for '/'
+      // eslint-disable-next-line no-console
+      console.error('pages.get DB error:', err);
+      if (slugPath === 'home') return createFallbackHomePage();
+      throw createError({ statusCode: 500, message: 'Failed to read page' });
+    }
   }
 
   throw createError({

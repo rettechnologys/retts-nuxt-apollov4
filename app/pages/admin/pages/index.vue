@@ -219,7 +219,7 @@ const doDelete = async () => {
   deleting.value = true;
   try {
     await $fetch(`/api/admin/pages/${pageToDelete.value.slug}`, {
-      method: 'DELETE',
+      method: 'DELETE' as any,
     });
     toast.add({
       severity: 'success',

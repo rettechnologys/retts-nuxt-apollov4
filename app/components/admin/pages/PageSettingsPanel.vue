@@ -104,7 +104,7 @@
           </label>
           <Select
             inputId="parentPage"
-            v-model="parentPageIdValue"
+            v-model="parentSlugValue"
             :options="parentPageOptions"
             optionLabel="label"
             optionValue="value"
@@ -174,19 +174,21 @@ const { value: allowCommentsValue } = useField<boolean>(
 );
 const { value: showInMenuValue } = useField<boolean>('settings.showInMenu');
 const { value: menuOrderValue } = useField<number>('settings.menuOrder');
-const { value: parentPageIdValue } = useField<number | null>(
-  'settings.parentPageId',
+const { value: parentSlugValue } = useField<string | null>(
+  'settings.parentSlug',
 );
 const { value: customCSSValue } = useField<string>('settings.customCSS');
 const { value: customJSValue } = useField<string>('settings.customJS');
 
-// Mock parent pages - in real app, fetch from API
-const parentPageOptions = ref([
-  { label: 'Home', value: 1 },
-  { label: 'About', value: 2 },
-  { label: 'Services', value: 3 },
-  { label: 'Blog', value: 4 },
-]);
+// Parent pages fetched from API
+const { data: pagesData } =
+  useFetch<{ slug: string; title: string; path: string }[]>('/api/admin/pages');
+const parentPageOptions = computed(() =>
+  (pagesData.value ?? []).map((p) => ({
+    label: `${p.title} (${p.path})`,
+    value: p.slug,
+  })),
+);
 </script>
 
 <style scoped>

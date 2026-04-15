@@ -427,7 +427,7 @@ const DEFAULT_PAGE_SETTINGS: PageSettings = {
   allowComments: false,
   showInMenu: false,
   menuOrder: 0,
-  parentPageId: null,
+  parentSlug: null,
   customCSS: '',
   customJS: '',
 };

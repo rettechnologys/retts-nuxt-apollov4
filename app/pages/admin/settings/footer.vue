@@ -28,12 +28,13 @@
           <div class="form-grid">
             <div class="form-field">
               <label>Layout Type</label>
-              <Dropdown
+              <Select
                 v-model="footer.layout"
                 :options="layoutTypes"
                 optionLabel="label"
                 optionValue="value"
                 placeholder="Select Layout"
+                class="w-full"
               />
             </div>
 
@@ -98,12 +99,14 @@
 
                 <div class="form-field">
                   <label>Content Type</label>
-                  <Dropdown
+                  <Select
                     v-model="column.type"
                     :options="columnTypes"
                     optionLabel="label"
                     optionValue="value"
                     placeholder="Select Type"
+                    class="w-full"
+                    @change="onColumnTypeChange(column)"
                   />
                 </div>
 
@@ -121,24 +124,21 @@
                   </div>
 
                   <draggable
-                    v-model="column.links!"
+                    v-if="Array.isArray(column.links)"
+                    v-model="column.links"
                     item-key="id"
                     handle=".drag-handle"
-                    class="links-list"
+                    class="links-list flex-wrap"
                   >
-                    <template #item="{ element: link }">
-                      <div class="link-item">
+                    <div
+                      class="link-item pb-4"
+                      v-for="link in column.links"
+                      :key="link.id"
+                    >
+                      <div
+                        class="flex items-center justify-between gap-2 w-full"
+                      >
                         <i class="pi pi-bars drag-handle"></i>
-                        <InputText
-                          v-model="link.label"
-                          placeholder="Link Label"
-                          class="flex-1"
-                        />
-                        <InputText
-                          v-model="link.url"
-                          placeholder="URL"
-                          class="flex-1"
-                        />
                         <Button
                           icon="pi pi-trash"
                           text
@@ -148,7 +148,17 @@
                           @click="removeLink(column, link)"
                         />
                       </div>
-                    </template>
+                      <InputText
+                        v-model="link.label"
+                        placeholder="Link Label"
+                        class="flex-1"
+                      />
+                      <InputText
+                        v-model="link.url"
+                        placeholder="URL"
+                        class="flex-1"
+                      />
+                    </div>
                   </draggable>
                 </div>
 
@@ -303,61 +313,38 @@
 
 <script setup lang="ts">
 import { VueDraggable as draggable } from 'vue-draggable-plus';
+import type { FooterConfig } from '~~/shared';
 
 definePageMeta({
   layout: 'admin',
 });
 
+const toast = useToast();
 const saving = ref(false);
 const showPreview = ref(false);
 
-const footer = ref({
+const footer = ref<FooterConfig>({
   layout: 'columns',
   columns: 4,
   showSocial: true,
   showNewsletter: false,
-  copyright: '© 2024 Your Company. All rights reserved.',
-  columnData: [
-    {
-      title: 'About Us',
-      type: 'text',
-      content:
-        'We are a leading company providing excellent services to our customers worldwide.',
-    },
-    {
-      title: 'Quick Links',
-      type: 'links',
-      links: [
-        { id: 1, label: 'Home', url: '/' },
-        { id: 2, label: 'About', url: '/about' },
-        { id: 3, label: 'Services', url: '/services' },
-        { id: 4, label: 'Contact', url: '/contact' },
-      ],
-    },
-    {
-      title: 'Resources',
-      type: 'links',
-      links: [
-        { id: 5, label: 'Blog', url: '/blog' },
-        { id: 6, label: 'FAQ', url: '/faq' },
-        { id: 7, label: 'Support', url: '/support' },
-      ],
-    },
-    {
-      title: 'Contact',
-      type: 'contact',
-      email: 'contact@example.com',
-      phone: '+1 234 567 8900',
-      address: '123 Business Street, City, Country',
-    },
-  ],
-  socialLinks: [
-    { platform: 'Facebook', icon: 'pi pi-facebook', url: '', enabled: true },
-    { platform: 'Twitter', icon: 'pi pi-twitter', url: '', enabled: true },
-    { platform: 'Instagram', icon: 'pi pi-instagram', url: '', enabled: true },
-    { platform: 'LinkedIn', icon: 'pi pi-linkedin', url: '', enabled: true },
-    { platform: 'YouTube', icon: 'pi pi-youtube', url: '', enabled: false },
-  ],
+  copyright: `© ${new Date().getFullYear()} Your Company. All rights reserved.`,
+  columnData: [],
+  socialLinks: [],
+});
+
+onMounted(async () => {
+  try {
+    const data = await $fetch<{ footer: FooterConfig }>('/api/site-config');
+    footer.value = data.footer;
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to load footer settings',
+      life: 4000,
+    });
+  }
 });
 
 const layoutTypes = ref([
@@ -385,12 +372,14 @@ const removeColumn = (index: number) => {
 };
 
 const addLink = (column: any) => {
+  console.log('Adding link to column:', column);
   if (!column.links) column.links = [];
   column.links.push({
     id: Date.now(),
     label: '',
     url: '',
   });
+  console.log('Current links:', column);
 };
 
 const removeLink = (column: any, link: any) => {
@@ -400,11 +389,32 @@ const removeLink = (column: any, link: any) => {
   }
 };
 
+const onColumnTypeChange = (column: any) => {
+  if (column.type === 'links' && !Array.isArray(column.links)) {
+    column.links = [];
+  }
+};
+
 const saveFooter = async () => {
   saving.value = true;
   try {
-    // TODO: Call API to save footer settings
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await $fetch('/api/site-config', {
+      method: 'POST',
+      body: { footer: footer.value },
+    });
+    toast.add({
+      severity: 'success',
+      summary: 'Saved',
+      detail: 'Footer settings updated',
+      life: 3000,
+    });
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to save footer settings',
+      life: 4000,
+    });
   } finally {
     saving.value = false;
   }
@@ -513,9 +523,12 @@ const saveFooter = async () => {
 
 .link-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.5rem;
   padding: 0.5rem;
+  padding-bottom: 3rem;
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 6px;

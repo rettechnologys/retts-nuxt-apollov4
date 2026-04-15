@@ -157,16 +157,11 @@ const menuItems = computed(() => [
     label: 'Global Settings',
     icon: 'pi pi-cog',
     children: [
-      { path: '/admin/settings/theme', label: 'Theme/Layout' },
-      { path: '/admin/settings/menus', label: 'Menus' },
+      // { path: '/admin/settings/theme', label: 'Theme/Layout' },
+      // { path: '/admin/settings/menus', label: 'Menus' },
       { path: '/admin/settings/footer', label: 'Footer' },
       { path: '/admin/settings/seo', label: 'SEO Defaults' },
     ],
-  },
-  {
-    path: '/admin/templates',
-    label: 'Templates',
-    icon: 'pi pi-objects-column',
   },
   {
     path: '/admin/pages',
@@ -179,11 +174,11 @@ const menuItems = computed(() => [
     icon: 'pi pi-database',
     children: collectionsChildren.value,
   },
-  {
-    path: '/admin/media',
-    label: 'Media Library',
-    icon: 'pi pi-images',
-  },
+  // {
+  //   path: '/admin/media',
+  //   label: 'Media Library',
+  //   icon: 'pi pi-images',
+  // },
 ]);
 
 const userMenuItems = ref([

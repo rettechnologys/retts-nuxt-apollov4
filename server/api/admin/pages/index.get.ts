@@ -1,18 +1,24 @@
-// GET /api/admin/pages — list all pages in the in-memory store
-export default defineEventHandler(() => {
-  const g = globalThis as typeof globalThis & {
-    __demoPageStore?: Map<string, any>;
-  };
-  const store = g.__demoPageStore ?? new Map();
+import { db } from '../../../db/client';
 
-  return Array.from(store.entries()).map(([slug, entry]) => ({
-    slug,
-    id: entry.payload.id ?? slug,
-    title: entry.payload.title,
-    status: entry.payload.status,
-    type: entry.payload.type,
-    path: entry.pageConfig.path,
-    blockCount: (entry.payload.blocks ?? []).length,
-    savedAt: entry.savedAt,
-  }));
+// GET /api/admin/pages — list all pages persisted in SQLite
+export default defineEventHandler(() => {
+  const rows = db
+    .prepare('SELECT slug, payload, page_config, saved_at FROM pages')
+    .all() as Array<any>;
+
+  return rows.map((row: any) => {
+    const payload = row.payload ? JSON.parse(row.payload) : {};
+    const pageConfig = row.page_config ? JSON.parse(row.page_config) : {};
+
+    return {
+      slug: row.slug,
+      id: payload.id ?? row.slug,
+      title: payload.title,
+      status: payload.status,
+      type: payload.type,
+      path: pageConfig.path ?? `/${row.slug}`,
+      blockCount: Array.isArray(payload.blocks) ? payload.blocks.length : 0,
+      savedAt: row.saved_at,
+    };
+  });
 });
